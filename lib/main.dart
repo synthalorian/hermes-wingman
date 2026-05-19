@@ -46,7 +46,7 @@ void main() async {
   // Start Rust backend or connect to remote
   final backend = BackendService();
 
-  // Load saved backend URL for mobile
+  // Mobile: load saved backend URL before starting
   if (!_isDesktop) {
     final settings = WingmanSettings();
     await Future.delayed(const Duration(milliseconds: 100));
@@ -56,10 +56,26 @@ void main() async {
     }
   }
 
-  final started = await backend.start();
+  // Mobile: quick connect attempt (1 second max), don't block the UI
+  // Desktop: block until backend is ready (8 seconds)
+  final started = await backend.start(
+    timeout: _isDesktop
+        ? const Duration(seconds: 8)
+        : const Duration(seconds: 1),
+  );
+
   if (!started) {
     debugPrint('WARNING: Backend failed to start: ${backend.lastError}');
     debugPrint('Falling back to CLI-based HermesClient');
+
+    // On mobile, retry in background so the UI loads immediately
+    if (!_isDesktop) {
+      Future.delayed(const Duration(milliseconds: 100), () {
+        backend.start(timeout: const Duration(seconds: 5)).then((ok) {
+          if (ok) debugPrint('[Main] Background reconnect succeeded');
+        });
+      });
+    }
   } else {
     debugPrint('Backend connected. State: ${backend.state}');
   }
