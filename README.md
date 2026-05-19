@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/icons/hermes-wingman.png" width="128" height="128" alt="Hermes Wingman">
+  <img src="assets/icons/hermes-wingman.png" width="256" height="256" alt="Hermes Wingman">
 </p>
 
 <h1 align="center">Hermes Wingman</h1>
