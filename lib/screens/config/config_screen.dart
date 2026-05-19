@@ -190,6 +190,13 @@ class _ConfigScreenState extends State<ConfigScreen> {
         children: [
           // Connection settings (mobile)
           if (_isMobile) _buildConnectionSection(scheme),
+
+          // Theme picker (mobile)
+          if (_isMobile) ...[
+            const SizedBox(height: 8),
+            _buildThemeSection(scheme),
+          ],
+
           const SizedBox(height: 8),
           // Summary bar
           Container(
@@ -327,6 +334,74 @@ class _ConfigScreenState extends State<ConfigScreen> {
                 ),
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Theme Picker (mobile) ───────────────────────────────────────────────
+
+  Widget _buildThemeSection(AppColorScheme scheme) {
+    final themeManager = context.watch<ThemeManager>();
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: scheme.surfaceAlt,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: scheme.accent.withValues(alpha: 0.3), width: 0.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.palette_outlined, size: 14, color: scheme.accent),
+              const SizedBox(width: 8),
+              Text('Theme', style: TextStyle(color: scheme.text, fontSize: 12, fontWeight: FontWeight.w500)),
+              const Spacer(),
+              Text(themeManager.currentThemeName, style: TextStyle(color: scheme.textMuted, fontSize: 10)),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: themeManager.availableThemes.map((name) {
+              final isCurrent = name == themeManager.currentThemeName;
+              return GestureDetector(
+                onTap: () => themeManager.setTheme(name),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: isCurrent ? scheme.primary.withValues(alpha: 0.12) : scheme.cardBackground,
+                    borderRadius: BorderRadius.circular(5),
+                    border: Border.all(
+                      color: isCurrent ? scheme.primary : scheme.borderDim,
+                      width: isCurrent ? 1.5 : 0.5,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(isCurrent ? Icons.brightness_1 : Icons.circle_outlined, size: 8,
+                        color: isCurrent ? scheme.primary : scheme.textMuted),
+                      const SizedBox(width: 5),
+                      Text(name, style: TextStyle(
+                        color: isCurrent ? scheme.primary : scheme.text,
+                        fontSize: 10,
+                        fontWeight: isCurrent ? FontWeight.w600 : FontWeight.w400)),
+                      if (isCurrent) ...[
+                        const SizedBox(width: 3),
+                        Icon(Icons.check, size: 10, color: scheme.primary),
+                      ],
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
           ),
         ],
       ),
