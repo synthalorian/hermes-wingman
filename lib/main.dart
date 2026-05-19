@@ -1,0 +1,477 @@
+import 'dart:io' show Platform;
+
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'theme/theme_manager.dart';
+import 'services/hermes_service.dart';
+import 'services/hermes_api_client.dart';
+import 'services/hermes_client.dart';
+import 'services/wingman_settings.dart';
+import 'services/chat_manager.dart';
+import 'theme/app_theme.dart';
+import 'widgets/wingman_icon.dart';
+import 'screens/dashboard/dashboard_screen.dart';
+import 'screens/sessions/sessions_screen.dart';
+import 'screens/config/config_screen.dart';
+import 'screens/logs/logs_screen.dart';
+import 'screens/cron/cron_screen.dart';
+import 'screens/gateway/gateway_screen.dart';
+import 'screens/chat/chat_screen.dart';
+import 'screens/models/models_screen.dart';
+import 'screens/setup/setup_wizard_screen.dart';
+import 'screens/tools/tools_screen.dart';
+
+// System tray — stub on mobile, real on desktop
+import 'services/tray_service_stub.dart'
+  if (dart.linux) 'services/tray_service.dart'
+  if (dart.macos) 'services/tray_service.dart'
+  if (dart.windows) 'services/tray_service.dart';
+
+final bool _isDesktop = !Platform.isAndroid && !Platform.isIOS;
+
+// ── App Entry Point ─────────────────────────────────────────────────────────
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize tray only on desktop
+  TrayService? trayService;
+  if (_isDesktop) {
+    trayService = TrayService();
+    trayService.onShow = () {};
+    trayService.onQuit = () {};
+    trayService.init().then((_) => debugPrint('System tray initialized'));
+  }
+
+  // Start Rust backend or connect to remote
+  final backend = BackendService();
+
+  // Load saved backend URL for mobile
+  if (!_isDesktop) {
+    final settings = WingmanSettings();
+    await Future.delayed(const Duration(milliseconds: 100));
+    if (settings.backendHost != '127.0.0.1') {
+      backend.setBaseUrl(settings.backendHost, settings.backendPort);
+      debugPrint('[Main] Using remote backend: ${settings.backendHost}:${settings.backendPort}');
+    }
+  }
+
+  final started = await backend.start();
+  if (!started) {
+    debugPrint('WARNING: Backend failed to start: ${backend.lastError}');
+    debugPrint('Falling back to CLI-based HermesClient');
+  } else {
+    debugPrint('Backend connected. State: ${backend.state}');
+  }
+
+  final HermesService hermesService = started ? backend : HermesClient();
+
+  // Wire tray callbacks (desktop only)
+  if (trayService != null) {
+    trayService.onShow = () {};
+    trayService.onQuit = () => backend.stop().then((_) => debugPrint('Backend stopped'));
+  }
+
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => ThemeManager()),
+        ChangeNotifierProvider(create: (_) => WingmanSettings()),
+        ChangeNotifierProvider(create: (_) => ChatManager()),
+        ChangeNotifierProvider<BackendService>.value(value: backend),
+        Provider<HermesService>.value(value: hermesService),
+      ],
+      child: HermesWingmanApp(trayService: trayService),
+    ),
+  );
+}
+
+class HermesWingmanApp extends StatelessWidget {
+  final TrayService? trayService;
+
+  const HermesWingmanApp({super.key, this.trayService});
+
+  @override
+  Widget build(BuildContext context) {
+    final themeManager = context.watch<ThemeManager>();
+    return MaterialApp(
+      title: 'Hermes Wingman',
+      debugShowCheckedModeBanner: false,
+      theme: themeManager.themeData,
+      home: MainShell(trayService: trayService),
+    );
+  }
+}
+
+/// Root shell with a persistent sidebar (desktop) or bottom nav (mobile).
+class MainShell extends StatefulWidget {
+  final TrayService? trayService;
+
+  const MainShell({super.key, this.trayService});
+
+  @override
+  State<MainShell> createState() => _MainShellState();
+}
+
+class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
+  int _selectedIndex = 0;
+
+  static const _navItems = <_NavItem>[
+    _NavItem('Dashboard', Icons.dashboard, 'HUD'),
+    _NavItem('Chat', Icons.chat, 'CHAT'),
+    _NavItem('Models', Icons.memory_outlined, 'AI'),
+    _NavItem('Tools', Icons.build_outlined, '⚙'),
+    _NavItem('Sessions', Icons.chat_bubble_outline, 'LOG'),
+    _NavItem('Config', Icons.settings_outlined, 'CFG'),
+    _NavItem('Logs', Icons.terminal, 'SYS'),
+    _NavItem('Cron', Icons.schedule_outlined, '⏰'),
+    _NavItem('Gateway', Icons.hub_outlined, 'GW'),
+    _NavItem('Setup', Icons.rocket_outlined, '✨'),
+  ];
+
+  /// Mobile shows a subset in the bottom nav bar
+  static const _mobileNavItems = <_NavItem>[
+    _NavItem('Dashboard', Icons.dashboard, ''),
+    _NavItem('Chat', Icons.chat, ''),
+    _NavItem('Models', Icons.memory_outlined, ''),
+    _NavItem('Sessions', Icons.chat_bubble_outline, ''),
+    _NavItem('Settings', Icons.settings_outlined, ''),
+  ];
+
+  /// Maps mobile nav indices (0-4) to screen indices (0-9)
+  static const _mobileIndexMap = [0, 1, 2, 4, 5];
+
+  late final List<Widget> _screens;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+
+    _screens = [
+      DashboardScreen(onNavigate: (i) => setState(() => _selectedIndex = i)),
+      const ChatScreen(),
+      const ModelsScreen(),
+      const ToolsScreen(),
+      SessionsScreen(onNavigate: (i) => setState(() => _selectedIndex = i)),
+      const ConfigScreen(),
+      const LogsScreen(),
+      const CronScreen(),
+      const GatewayScreen(),
+      SetupWizardScreen(onNavigate: (i) => setState(() => _selectedIndex = i)),
+    ];
+
+    if (widget.trayService != null) {
+      widget.trayService!.onShow = () => widget.trayService!.showWindow();
+      widget.trayService!.onSetupWizard = () {
+        if (mounted) setState(() => _selectedIndex = 9);
+      };
+    }
+
+    _checkFirstRun();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  Future<void> _checkFirstRun() async {
+    try {
+      final backend = context.read<BackendService>();
+      await Future.delayed(const Duration(seconds: 2));
+      if (!mounted) return;
+      final status = await backend.httpGet('/setup/detect');
+      final installed = status['hermes_installed'] == true;
+      final hasConfig = status['config_exists'] == true;
+      if (!installed || !hasConfig) {
+        if (mounted) setState(() => _selectedIndex = 9);
+      }
+    } catch (_) {}
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = context.watch<ThemeManager>().currentScheme;
+    final backendState = context.watch<BackendService>().state;
+
+    if (_isDesktop) {
+      return _buildDesktopLayout(scheme, backendState);
+    }
+    return _buildMobileLayout(scheme, backendState);
+  }
+
+  // ── Desktop Layout ───────────────────────────────────────────────────────
+
+  Widget _buildDesktopLayout(AppColorScheme scheme, BackendConnectionState state) {
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop && widget.trayService != null) {
+          widget.trayService!.hideWindow();
+        }
+      },
+      child: Container(
+        color: scheme.scaffoldBackground,
+        width: double.infinity,
+        height: double.infinity,
+        child: Row(
+          children: [
+            // ── Sidebar ──────────────────────────────────────────────
+            Container(
+              width: 68,
+              decoration: BoxDecoration(
+                color: scheme.appBarBackground,
+                border: Border(
+                  right: BorderSide(color: scheme.borderDim, width: 0.5),
+                ),
+              ),
+              child: Column(
+                children: [
+                  const SizedBox(height: 12),
+                  const WingmanIcon(size: 40),
+                  const SizedBox(height: 12),
+                  _BackendStatusDot(scheme: scheme, state: state),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: Column(
+                      children: List.generate(_navItems.length, (i) {
+                        final item = _navItems[i];
+                        final selected = i == _selectedIndex;
+                        return _SidebarButton(
+                          icon: item.icon,
+                          label: item.label,
+                          badge: item.badge,
+                          selected: selected,
+                          color: selected ? scheme.primary : scheme.textMuted,
+                          bgColor: selected ? scheme.primary.withValues(alpha: 0.08) : Colors.transparent,
+                          onTap: () => setState(() => _selectedIndex = i),
+                        );
+                      }),
+                    ),
+                  ),
+                  _ThemeSwitcherButton(),
+                  const SizedBox(height: 12),
+                ],
+              ),
+            ),
+            // ── Content ─────────────────────────────────────────────
+            Expanded(child: _screens[_selectedIndex]),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Mobile Layout ─────────────────────────────────────────────────────────
+
+  Widget _buildMobileLayout(AppColorScheme scheme, BackendConnectionState state) {
+    // Find the best matching mobile index
+    final currentMobileIdx = _mobileIndexMap.indexOf(_selectedIndex);
+    final effectiveIdx = currentMobileIdx >= 0 ? currentMobileIdx : 0;
+
+    return Scaffold(
+      backgroundColor: scheme.scaffoldBackground,
+      appBar: AppBar(
+        backgroundColor: scheme.appBarBackground,
+        elevation: 0,
+        title: Row(
+          children: [
+            const WingmanIcon(size: 22),
+            const SizedBox(width: 8),
+            Text('Hermes Wingman', style: TextStyle(color: scheme.text, fontSize: 14)),
+            const Spacer(),
+            _BackendStatusDot(scheme: scheme, state: state, dotSize: 6),
+          ],
+        ),
+      ),
+      body: IndexedStack(
+        index: effectiveIdx,
+        children: _mobileIndexMap.map((i) => _screens[i]).toList(),
+      ),
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          border: Border(top: BorderSide(color: scheme.borderDim, width: 0.5)),
+        ),
+        child: BottomNavigationBar(
+          backgroundColor: scheme.appBarBackground,
+          selectedItemColor: scheme.primary,
+          unselectedItemColor: scheme.textMuted,
+          type: BottomNavigationBarType.fixed,
+          currentIndex: effectiveIdx,
+          onTap: (i) => setState(() => _selectedIndex = _mobileIndexMap[i]),
+          items: _mobileNavItems.map((item) {
+            return BottomNavigationBarItem(
+              icon: Icon(item.icon, size: 20),
+              activeIcon: Icon(item.icon, size: 22),
+              label: item.label,
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Reusable Components ─────────────────────────────────────────────────────
+
+class _NavItem {
+  final String label;
+  final IconData icon;
+  final String badge;
+  const _NavItem(this.label, this.icon, this.badge);
+}
+
+class _BackendStatusDot extends StatelessWidget {
+  final AppColorScheme scheme;
+  final BackendConnectionState state;
+  final double dotSize;
+
+  const _BackendStatusDot({
+    required this.scheme,
+    required this.state,
+    this.dotSize = 8,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    Color color;
+    String tooltip;
+    switch (state) {
+      case BackendConnectionState.connected:
+        color = scheme.success;
+        tooltip = 'Backend connected';
+      case BackendConnectionState.initializing:
+        color = scheme.warning;
+        tooltip = 'Backend initializing...';
+      case BackendConnectionState.failed:
+      case BackendConnectionState.notFound:
+        color = scheme.error;
+        tooltip = 'Backend offline: ${context.read<BackendService>().lastError ?? "unknown"}';
+    }
+
+    return Tooltip(
+      message: tooltip,
+      child: Container(
+        width: dotSize,
+        height: dotSize,
+        decoration: BoxDecoration(
+          color: color,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(color: color.withValues(alpha: 0.5), blurRadius: 4, spreadRadius: 1),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SidebarButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String badge;
+  final bool selected;
+  final Color color;
+  final Color bgColor;
+  final VoidCallback onTap;
+
+  const _SidebarButton({
+    required this.icon,
+    required this.label,
+    required this.badge,
+    required this.selected,
+    required this.color,
+    required this.bgColor,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: label,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 8),
+        child: Material(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(8),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(8),
+            onTap: onTap,
+            child: Container(
+              width: 52, height: 48,
+              padding: const EdgeInsets.only(left: 2),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: selected ? Border(left: BorderSide(color: color, width: 2)) : null,
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(icon, size: 18, color: color),
+                  const SizedBox(height: 2),
+                  Text(
+                    badge,
+                    style: TextStyle(
+                      fontSize: 8, color: color,
+                      fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ThemeSwitcherButton extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final themeManager = context.watch<ThemeManager>();
+    final scheme = themeManager.currentScheme;
+
+    return PopupMenuButton<String>(
+      tooltip: 'Switch Theme',
+      offset: const Offset(0, -40),
+      elevation: 8,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+        side: BorderSide(color: scheme.borderDim, width: 0.5),
+      ),
+      color: scheme.surface,
+      onSelected: (name) => themeManager.setTheme(name),
+      itemBuilder: (context) => themeManager.availableThemes.map((name) {
+        final current = name == themeManager.currentThemeName;
+        return PopupMenuItem<String>(
+          value: name,
+          child: Row(
+            children: [
+              Icon(current ? Icons.brightness_1 : Icons.circle_outlined, size: 10,
+                color: current ? scheme.primary : scheme.textMuted),
+              const SizedBox(width: 10),
+              Text(name, style: TextStyle(
+                color: current ? scheme.primary : scheme.text,
+                fontWeight: current ? FontWeight.w600 : FontWeight.w400)),
+              if (current) ...[const Spacer(), Icon(Icons.check, size: 14, color: scheme.primary)],
+            ],
+          ),
+        );
+      }).toList(),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+        child: Container(
+          width: 52, height: 40,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: scheme.borderDim.withValues(alpha: 0.5), width: 0.5),
+          ),
+          child: Icon(Icons.palette_outlined, size: 18, color: scheme.textDim),
+        ),
+      ),
+    );
+  }
+}

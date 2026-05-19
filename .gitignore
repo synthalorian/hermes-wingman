@@ -1,0 +1,61 @@
+# Flutter
+build/
+.dart_tool/
+.packages
+.pub/
+.pub-cache/
+.pubignore
+*.iml
+*.lock
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# Android
+android/.gradle/
+android/app/build/
+android/build/
+local.properties
+
+# iOS
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/Runner.xcworkspace/xcuserdata/
+ios/*.xcworkspace/xcuserdata/
+
+# macOS
+macos/Pods/
+macos/.symlinks/
+macos/Flutter/ephemeral/
+macos/Runner.xcworkspace/xcuserdata/
+
+# Windows
+windows/Flutter/ephemeral/
+windows/Runner.recipe
+windows/runner/runner.exe
+
+# Rust
+backend/target/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+
+# Hermes Wingman specific
+wingman_chats.json
+wingman_probed.json
+wingman_settings.json
+*.apk
+*.aab

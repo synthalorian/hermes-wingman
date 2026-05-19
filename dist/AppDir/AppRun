@@ -1,0 +1,21 @@
+#!/bin/bash
+# Hermes Wingman AppRun — portable entry point
+HERE="$(dirname "$(readlink -f "$0")")"
+export PATH="$HERE/usr/bin:$PATH"
+export LD_LIBRARY_PATH="$HERE/usr/bin/lib:$LD_LIBRARY_PATH"
+
+# Start backend in background
+"$HERE/usr/bin/hermes-wingman-backend" &
+BACKEND_PID=$!
+
+# Wait for backend to be ready
+for i in $(seq 1 20); do
+  if curl -s http://127.0.0.1:9120/health > /dev/null 2>&1; then
+    break
+  fi
+  sleep 0.3
+done
+
+# Launch the Flutter app
+cd "$HERE/usr/bin"
+exec ./hermes_wingman "$@"
