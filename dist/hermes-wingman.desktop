@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Hermes Wingman
+Comment=Universal GUI for Hermes Agent — manage models, chat, sessions, gateway, and cron
+Exec=hermes-wingman-wrapper
+Icon=hermes-wingman
+Terminal=false
+Categories=Utility;Development;AI;
+StartupWMClass=hermes_wingman
+X-AppImage-Version=0.1.0

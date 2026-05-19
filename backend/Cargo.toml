@@ -1,0 +1,20 @@
+[package]
+name = "hermes-wingman-backend"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+axum = { version = "0.8", features = ["json"] }
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+reqwest = { version = "0.12", features = ["json", "stream"] }
+rusqlite = { version = "0.34", features = ["bundled"] }
+tower-http = { version = "0.6", features = ["cors"] }
+anyhow = "1"
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1", features = ["v4"] }
+regex = "1"
+futures = "0.3"
+tokio-stream = "0.1"

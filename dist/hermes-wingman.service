@@ -1,0 +1,14 @@
+[Unit]
+Description=Hermes Wingman Backend
+Documentation=https://github.com/synthalorian/hermes-wingman
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/hermes-wingman-backend
+Restart=on-failure
+RestartSec=3
+Environment=PAGER=cat
+
+[Install]
+WantedBy=default.target

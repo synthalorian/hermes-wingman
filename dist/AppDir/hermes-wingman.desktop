@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Hermes Wingman
+Comment=Universal GUI for Hermes Agent
+Exec=AppRun
+Icon=hermes-wingman
+Type=Application
+Categories=Utility;Development;AI;
+Terminal=false
+StartupWMClass=hermes_wingman
+X-AppImage-Version=0.1.0

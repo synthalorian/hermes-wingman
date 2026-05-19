@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0D0221"/>
+      <stop offset="100%" stop-color="#1A0038"/>
+    </linearGradient>
+    <linearGradient id="h" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8F00FF"/>
+      <stop offset="100%" stop-color="#FF00FF"/>
+    </linearGradient>
+    <linearGradient id="w" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#00FFFF"/>
+      <stop offset="100%" stop-color="#8F00FF"/>
+    </linearGradient>
+    <filter id="glow-h">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glow-w">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glow-dot">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="512" height="512" fill="url(#bg)" rx="80"/>
+
+  <!-- Subtle grid lines -->
+  <g stroke="#240037" stroke-width="0.5" opacity="0.5">
+    <line x1="0" y1="128" x2="512" y2="128"/>
+    <line x1="0" y1="256" x2="512" y2="256"/>
+    <line x1="0" y1="384" x2="512" y2="384"/>
+    <line x1="128" y1="0" x2="128" y2="512"/>
+    <line x1="256" y1="0" x2="256" y2="512"/>
+    <line x1="384" y1="0" x2="384" y2="512"/>
+  </g>
+
+  <!-- Hermes Caduceus Wings - stylized as H -->
+  <g filter="url(#glow-h)">
+    <!-- Left wing -->
+    <path d="M140 256 Q100 200 80 160 Q100 200 130 230 Q110 190 120 150 Q130 180 145 220 Q140 185 155 160 Q155 190 150 230 Q160 200 170 190 Q165 215 160 245 L180 256 Q160 260 140 256Z"
+          fill="url(#h)" opacity="0.9"/>
+    <!-- Right wing -->
+    <path d="M372 256 Q412 200 432 160 Q412 200 382 230 Q402 190 392 150 Q382 180 367 220 Q372 185 357 160 Q357 190 362 230 Q352 200 342 190 Q347 215 352 245 L332 256 Q352 260 372 256Z"
+          fill="url(#w)" opacity="0.9"/>
+  </g>
+
+  <!-- H letterform -->
+  <g filter="url(#glow-h)">
+    <rect x="175" y="180" width="16" height="160" rx="4" fill="#8F00FF"/>
+    <rect x="321" y="180" width="16" height="160" rx="4" fill="#00FFFF"/>
+    <rect x="175" y="240" width="162" height="16" rx="4" fill="url(#h)"/>
+  </g>
+
+  <!-- W letterform (second half) -->
+  <g filter="url(#glow-w)">
+    <line x1="337" y1="250" x2="357" y2="340" stroke="#00FFFF" stroke-width="6" stroke-linecap="round"/>
+    <line x1="357" y1="340" x2="377" y2="290" stroke="#00FFFF" stroke-width="6" stroke-linecap="round"/>
+    <line x1="377" y1="290" x2="397" y2="340" stroke="#00FFFF" stroke-width="6" stroke-linecap="round"/>
+    <line x1="397" y1="340" x2="417" y2="250" stroke="#00FFFF" stroke-width="6" stroke-linecap="round"/>
+  </g>
+
+  <!-- Central dot / star -->
+  <circle cx="256" cy="220" r="8" fill="#FFFFFF" filter="url(#glow-dot)"/>
+  <circle cx="256" cy="220" r="3" fill="#FF00FF"/>
+
+  <!-- Orbital ring -->
+  <ellipse cx="256" cy="256" rx="90" ry="90" fill="none" stroke="#FF00FF" stroke-width="1" opacity="0.3"/>
+  <ellipse cx="256" cy="256" rx="80" ry="80" fill="none" stroke="#8F00FF" stroke-width="0.5" opacity="0.2"/>
+
+  <!-- Bottom accent dots -->
+  <circle cx="180" cy="400" r="2" fill="#FF00FF" opacity="0.6"/>
+  <circle cx="256" cy="410" r="2.5" fill="#00FFFF" opacity="0.7"/>
+  <circle cx="332" cy="400" r="2" fill="#8F00FF" opacity="0.6"/>
+</svg>
