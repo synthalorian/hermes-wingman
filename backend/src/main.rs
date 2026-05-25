@@ -1,8 +1,8 @@
 use axum::{
-    extract::{Query, State},
+    extract::{Path, Query, State},
     http::StatusCode,
     response::{Json, Sse},
-    routing::{get, post},
+    routing::{delete, get, post, put},
     Router,
 };
 use futures::stream::Stream;
@@ -2012,6 +2012,296 @@ async fn hermes_skills() -> Json<serde_json::Value> {
     }
 }
 
+// ── Skills Toggle ──────────────────────────────────────────────────────────
+
+#[derive(Deserialize)]
+struct SkillToggleParams {
+    action: Option<String>,
+}
+
+async fn hermes_skills_toggle(
+    axum::extract::Path(name): axum::extract::Path<String>,
+    Json(body): Json<serde_json::Value>,
+) -> Json<serde_json::Value> {
+    let action = body["action"].as_str().unwrap_or("toggle");
+    let args: Vec<&str> = match action {
+        "enable" => vec!["skills", "enable", &name],
+        "disable" => vec!["skills", "disable", &name],
+        _ => vec!["skills", "toggle", &name],
+    };
+    match run_hermes(&args) {
+        Ok((stdout, stderr, code)) => {
+            Json(serde_json::json!({
+                "success": code == 0,
+                "name": name,
+                "action": action,
+                "output": stdout.trim(),
+                "exit_code": code,
+            }))
+        }
+        Err(e) => Json(serde_json::json!({
+            "success": false,
+            "error": e,
+        })),
+    }
+}
+
+// ── Memory ──────────────────────────────────────────────────────────────────
+
+async fn memory_list() -> Json<serde_json::Value> {
+    match run_hermes(&["memory", "list"]) {
+        Ok((stdout, _stderr, code)) => {
+            let entries: Vec<serde_json::Value> = stdout.lines()
+                .filter(|l| l.trim().starts_with('│') && !l.contains("━━━") && !l.contains("───"))
+                .filter_map(|line| {
+                    let parts: Vec<&str> = line.split('│').collect();
+                    if parts.len() >= 3 {
+                        let key = parts.get(1).map(|s| s.trim()).unwrap_or("").to_string();
+                        let content = parts.get(2).map(|s| s.trim()).unwrap_or("").to_string();
+                        if !key.is_empty() && !key.starts_with("Key") {
+                            return Some(serde_json::json!({
+                                "key": key,
+                                "content": content,
+                                "type": parts.get(3).map(|s| s.trim()).unwrap_or("unknown"),
+                            }));
+                        }
+                    }
+                    None
+                })
+                .collect();
+
+            Json(serde_json::json!({
+                "success": code == 0,
+                "entries": entries,
+                "count": entries.len(),
+            }))
+        }
+        Err(e) => Json(serde_json::json!({
+            "success": false,
+            "entries": [],
+            "error": e,
+        })),
+    }
+}
+
+async fn memory_get(
+    axum::extract::Path(id): axum::extract::Path<String>,
+) -> Json<serde_json::Value> {
+    match run_hermes(&["memory", "get", &id]) {
+        Ok((stdout, _stderr, code)) => {
+            Json(serde_json::json!({
+                "success": code == 0,
+                "id": id,
+                "content": stdout.trim(),
+            }))
+        }
+        Err(e) => Json(serde_json::json!({
+            "success": false,
+            "error": e,
+        })),
+    }
+}
+
+async fn memory_delete(
+    axum::extract::Path(id): axum::extract::Path<String>,
+) -> Json<serde_json::Value> {
+    match run_hermes(&["memory", "delete", &id]) {
+        Ok((_stdout, _stderr, code)) => {
+            Json(serde_json::json!({
+                "success": code == 0,
+                "id": id,
+            }))
+        }
+        Err(e) => Json(serde_json::json!({
+            "success": false,
+            "error": e,
+        })),
+    }
+}
+
+#[derive(Deserialize)]
+struct MemorySearchQuery {
+    query: Option<String>,
+}
+
+async fn memory_search(
+    Json(body): Json<serde_json::Value>,
+) -> Json<serde_json::Value> {
+    let query = body["query"].as_str().unwrap_or("");
+    if query.is_empty() {
+        return Json(serde_json::json!({
+            "success": false,
+            "entries": [],
+            "error": "query is required",
+        }));
+    }
+    match run_hermes(&["memory", "search", query]) {
+        Ok((stdout, _stderr, code)) => {
+            let entries: Vec<&str> = stdout.lines().filter(|l| !l.trim().is_empty()).collect();
+            Json(serde_json::json!({
+                "success": code == 0,
+                "entries": entries,
+                "count": entries.len(),
+            }))
+        }
+        Err(e) => Json(serde_json::json!({
+            "success": false,
+            "entries": [],
+            "error": e,
+        })),
+    }
+}
+
+// ── File Operations ─────────────────────────────────────────────────────────
+
+fn resolve_fs_path(state: &AppState, relative_path: &str) -> PathBuf {
+    let base = &state.hermes_home;
+    // Prevent directory traversal
+    let clean = relative_path
+        .replace("..", "")
+        .trim_start_matches('/')
+        .to_string();
+    if clean.is_empty() {
+        base.clone()
+    } else {
+        base.join(&clean)
+    }
+}
+
+#[derive(Deserialize)]
+struct FileListQuery {
+    path: Option<String>,
+}
+
+async fn files_list(
+    State(state): State<Arc<AppState>>,
+    Query(query): Query<FileListQuery>,
+) -> Json<serde_json::Value> {
+    let dir_path = resolve_fs_path(&state, query.path.as_deref().unwrap_or(""));
+    match std::fs::read_dir(&dir_path) {
+        Ok(entries) => {
+            let mut files = Vec::new();
+            let mut dirs = Vec::new();
+            for entry in entries {
+                if let Ok(entry) = entry {
+                    let name = entry.file_name().to_string_lossy().to_string();
+                    if name.starts_with('.') { continue; }
+                    if entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
+                        dirs.push(name);
+                    } else {
+                        files.push(name);
+                    }
+                }
+            }
+            dirs.sort();
+            files.sort();
+            Json(serde_json::json!({
+                "success": true,
+                "path": dir_path.to_string_lossy().to_string(),
+                "directories": dirs,
+                "files": files,
+                "parent": query.path.as_deref().unwrap_or("").rsplit_once('/').map(|(p, _)| p.to_string()).unwrap_or_default(),
+            }))
+        }
+        Err(e) => Json(serde_json::json!({
+            "success": false,
+            "error": format!("Cannot read directory: {}", e),
+        })),
+    }
+}
+
+#[derive(Deserialize)]
+struct FileReadQuery {
+    path: String,
+}
+
+async fn files_read(
+    State(state): State<Arc<AppState>>,
+    Query(query): Query<FileReadQuery>,
+) -> Json<serde_json::Value> {
+    let full_path = resolve_fs_path(&state, &query.path);
+    if !full_path.exists() {
+        return Json(serde_json::json!({
+            "success": false,
+            "error": "File not found",
+        }));
+    }
+    if full_path.is_dir() {
+        return Json(serde_json::json!({
+            "success": false,
+            "error": "Path is a directory",
+        }));
+    }
+    match std::fs::read_to_string(&full_path) {
+        Ok(content) => Json(serde_json::json!({
+            "success": true,
+            "path": query.path,
+            "content": content,
+            "size": content.len(),
+        })),
+        Err(e) => Json(serde_json::json!({
+            "success": false,
+            "error": format!("Cannot read file: {}", e),
+        })),
+    }
+}
+
+#[derive(Deserialize)]
+struct FileWriteBody {
+    path: String,
+    content: String,
+}
+
+async fn files_write(
+    State(state): State<Arc<AppState>>,
+    Json(body): Json<FileWriteBody>,
+) -> Json<serde_json::Value> {
+    let full_path = resolve_fs_path(&state, &body.path);
+    // Ensure parent dir exists
+    if let Some(parent) = full_path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    match std::fs::write(&full_path, &body.content) {
+        Ok(()) => Json(serde_json::json!({
+            "success": true,
+            "path": body.path,
+            "size": body.content.len(),
+        })),
+        Err(e) => Json(serde_json::json!({
+            "success": false,
+            "error": format!("Cannot write file: {}", e),
+        })),
+    }
+}
+
+// ── Generic Hermes Command Runner ────────────────────────────────────────────
+
+#[derive(Deserialize)]
+struct HermesCommandBody {
+    args: Vec<String>,
+}
+
+async fn hermes_command(
+    Json(body): Json<HermesCommandBody>,
+) -> Json<serde_json::Value> {
+    let str_args: Vec<&str> = body.args.iter().map(|s| s.as_str()).collect();
+    match run_hermes(&str_args) {
+        Ok((stdout, stderr, code)) => {
+            Json(serde_json::json!({
+                "success": code == 0,
+                "stdout": stdout.trim(),
+                "stderr": stderr.trim(),
+                "exit_code": code,
+            }))
+        }
+        Err(e) => Json(serde_json::json!({
+            "success": false,
+            "error": e,
+            "exit_code": -1,
+        })),
+    }
+}
+
 // ── Server ─────────────────────────────────────────────────────────────────
 
 #[tokio::main]
@@ -2041,6 +2331,15 @@ async fn main() {
         .route("/hermes/version", get(hermes_version))
         .route("/hermes/update", post(hermes_update))
         .route("/hermes/skills", get(hermes_skills))
+        .route("/hermes/skills/:name/toggle", post(hermes_skills_toggle))
+        .route("/hermes/command", post(hermes_command))
+        .route("/memory", get(memory_list))
+        .route("/memory/search", post(memory_search))
+        .route("/memory/:id", get(memory_get))
+        .route("/memory/:id", delete(memory_delete))
+        .route("/files/list", get(files_list))
+        .route("/files/read", get(files_read))
+        .route("/files/write", put(files_write))
         .layer(CorsLayer::permissive())
         .with_state(state);
 
