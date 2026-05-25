@@ -20,6 +20,11 @@ import 'screens/chat/chat_screen.dart';
 import 'screens/models/models_screen.dart';
 import 'screens/setup/setup_wizard_screen.dart';
 import 'screens/tools/tools_screen.dart';
+import 'screens/skills/skills_screen.dart';
+import 'screens/memory/memory_screen.dart';
+import 'screens/files/files_screen.dart';
+import 'screens/missions/missions_screen.dart';
+import 'screens/profiles/profiles_screen.dart';
 
 // System tray — stub on mobile, real on desktop
 import 'services/tray_service_stub.dart'
@@ -138,6 +143,11 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     _NavItem('Models', Icons.memory_outlined, 'AI'),
     _NavItem('Tools', Icons.build_outlined, '⚙'),
     _NavItem('Sessions', Icons.chat_bubble_outline, 'LOG'),
+    _NavItem('Skills', Icons.auto_awesome, 'SKL'),
+    _NavItem('Memory', Icons.storage, 'MEM'),
+    _NavItem('Files', Icons.folder_open, 'FIL'),
+    _NavItem('Missions', Icons.rocket_outlined, 'MIS'),
+    _NavItem('Profiles', Icons.person_outline, 'PRO'),
     _NavItem('Config', Icons.settings_outlined, 'CFG'),
     _NavItem('Logs', Icons.terminal, 'SYS'),
     _NavItem('Cron', Icons.schedule_outlined, '⏰'),
@@ -151,11 +161,13 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     _NavItem('Chat', Icons.chat, ''),
     _NavItem('Models', Icons.memory_outlined, ''),
     _NavItem('Sessions', Icons.chat_bubble_outline, ''),
+    _NavItem('Skills', Icons.auto_awesome, ''),
+    _NavItem('Files', Icons.folder_open, ''),
     _NavItem('Settings', Icons.settings_outlined, ''),
   ];
 
-  /// Maps mobile nav indices (0-4) to screen indices (0-9)
-  static const _mobileIndexMap = [0, 1, 2, 4, 5];
+  /// Maps mobile nav indices (0-6) to screen indices (0-14)
+  static const _mobileIndexMap = [0, 1, 2, 4, 5, 7, 10];
 
   late final List<Widget> _screens;
 
@@ -170,6 +182,11 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
       const ModelsScreen(),
       const ToolsScreen(),
       SessionsScreen(onNavigate: (i) => setState(() => _selectedIndex = i)),
+      const SkillsScreen(),
+      const MemoryScreen(),
+      const FilesScreen(),
+      const MissionsScreen(),
+      const ProfilesScreen(),
       const ConfigScreen(),
       const LogsScreen(),
       const CronScreen(),

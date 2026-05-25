@@ -222,3 +222,71 @@ class LogEntry {
 }
 
 enum ColorCode { normal, warning, error, dim }
+
+// ── Phase 2 Models ────────────────────────────────────────────────────
+
+/// A single Hermes skill entry.
+class SkillEntry {
+  final String name;
+  final String category;
+  final String description;
+  final bool enabled;
+
+  SkillEntry({
+    required this.name,
+    this.category = '',
+    this.description = '',
+    this.enabled = false,
+  });
+
+  factory SkillEntry.fromJson(Map<String, dynamic> json) => SkillEntry(
+    name: json['name'] ?? json['id'] ?? '',
+    category: json['category'] ?? '',
+    description: json['description'] ?? '',
+    enabled: json['enabled'] == true,
+  );
+}
+
+/// A memory entry from the Hermes agent.
+class MemoryEntry {
+  final String key;
+  final String content;
+  final String type;
+  final String id;
+
+  MemoryEntry({
+    required this.key,
+    this.content = '',
+    this.type = 'unknown',
+    this.id = '',
+  });
+
+  factory MemoryEntry.fromJson(Map<String, dynamic> json) => MemoryEntry(
+    key: json['key'] ?? json['id'] ?? '',
+    content: json['content'] ?? '',
+    type: json['type'] ?? 'unknown',
+    id: json['id'] ?? json['key'] ?? '',
+  );
+}
+
+/// Directory listing from the files endpoint.
+class FileListing {
+  final String path;
+  final List<String> directories;
+  final List<String> files;
+  final String parent;
+
+  FileListing({
+    this.path = '',
+    this.directories = const [],
+    this.files = const [],
+    this.parent = '',
+  });
+
+  factory FileListing.fromJson(Map<String, dynamic> json) => FileListing(
+    path: json['path'] ?? '',
+    directories: (json['directories'] as List?)?.cast<String>() ?? [],
+    files: (json['files'] as List?)?.cast<String>() ?? [],
+    parent: json['parent'] ?? '',
+  );
+}
