@@ -1,7 +1,10 @@
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../theme/theme_manager.dart';
 import '../../theme/app_theme.dart';
+import '../../theme/glass_card.dart';
 import '../../services/hermes_service.dart';
 import '../../models/hermes_models.dart';
 import '../../services/wingman_settings.dart';
@@ -37,7 +40,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     try {
       final client = context.read<HermesService>();
       
-      // Run all queries in parallel
       final results = await Future.wait([
         client.getStatus(),
         client.listSessions(limit: 5),
@@ -67,7 +69,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final scheme = context.watch<ThemeManager>().currentScheme;
 
     return Scaffold(
-      backgroundColor: scheme.scaffoldBackground,
+      backgroundColor: Colors.transparent,
       appBar: _buildAppBar(scheme),
       body: _loading && _status == null
           ? const Center(child: CircularProgressIndicator())
@@ -101,6 +103,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final settings = context.watch<WingmanSettings>();
     
     return AppBar(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
       title: GestureDetector(
         onDoubleTap: () => WingmanSettings.showEditDialog(context),
         child: Row(
@@ -115,36 +119,61 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ),
             const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                border: Border.all(color: scheme.borderDim, width: 0.5),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                'v0.1.0',
-                style: TextStyle(
-                  color: scheme.textMuted,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
+            _GlassVersionBadge(scheme: scheme),
             const SizedBox(width: 6),
             Tooltip(
               message: 'Double-click to rename',
-              child: Icon(Icons.edit_outlined, size: 10, color: scheme.textMuted.withValues(alpha: 0.5)),
+              child: Icon(Icons.edit_outlined, size: 10, color: scheme.textMuted.withAlpha(128)),
             ),
           ],
         ),
       ),
       actions: [
-        IconButton(
-          icon: Icon(Icons.refresh, size: 18, color: scheme.textDim),
-          onPressed: _loadAll,
-          tooltip: 'Refresh',
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: scheme.borderDim.withAlpha(40), width: 0.5),
+          ),
+          child: IconButton(
+            icon: Icon(Icons.refresh, size: 16, color: scheme.textDim),
+            onPressed: _loadAll,
+            tooltip: 'Refresh',
+          ),
         ),
+        const SizedBox(width: 8),
       ],
+    );
+  }
+
+  Widget _GoldSectionHeader(AppColorScheme scheme, String label) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Row(
+        children: [
+          Container(
+            width: 3,
+            height: 14,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [scheme.primary, scheme.accent],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: TextStyle(
+              color: scheme.textMuted,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.8,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -155,7 +184,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.cloud_off, size: 48, color: scheme.error.withValues(alpha: 0.6)),
+            Icon(Icons.cloud_off, size: 48, color: scheme.error.withAlpha(153)),
             const SizedBox(height: 16),
             Text('Could not reach Hermes', style: TextStyle(color: scheme.textDim, fontSize: 16)),
             const SizedBox(height: 8),
@@ -174,14 +203,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 MaterialButton(
-                  color: scheme.primary.withValues(alpha: 0.15),
+                  color: scheme.primary.withAlpha(38),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    side: BorderSide(color: scheme.primary.withAlpha(50), width: 0.5),
+                  ),
                   onPressed: _loadAll,
                   child: Text('Retry', style: TextStyle(color: scheme.primary)),
                 ),
                 const SizedBox(width: 12),
                 MaterialButton(
-                  color: scheme.accent.withValues(alpha: 0.15),
-                  onPressed: () => widget.onNavigate?.call(8), // Setup tab
+                  color: scheme.accent.withAlpha(38),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    side: BorderSide(color: scheme.accent.withAlpha(50), width: 0.5),
+                  ),
+                  onPressed: () => widget.onNavigate?.call(8),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -203,28 +240,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final isOnline = _status != null && _status!.isRunning;
     return Row(
       children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: isOnline
-                ? scheme.success.withValues(alpha: 0.1)
-                : scheme.error.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(4),
-            border: Border.all(
-              color: isOnline
-                  ? scheme.success.withValues(alpha: 0.3)
-                  : scheme.error.withValues(alpha: 0.3),
-            ),
-          ),
+        GlassCard(
+          scheme: scheme,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          blurSigma: 8,
+          borderRadius: 6,
+          tintColor: isOnline
+              ? scheme.success.withAlpha(25)
+              : scheme.error.withAlpha(25),
+          borderColor: isOnline
+              ? scheme.success.withAlpha(50)
+              : scheme.error.withAlpha(50),
+          glowColor: isOnline ? scheme.success : scheme.error,
+          glowRadius: 6,
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 6,
-                height: 6,
+                width: 6, height: 6,
                 decoration: BoxDecoration(
                   color: isOnline ? scheme.success : scheme.error,
                   shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: (isOnline ? scheme.success : scheme.error).withAlpha(128),
+                      blurRadius: 4,
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(width: 6),
@@ -242,15 +284,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         if (_status != null) ...[
           const SizedBox(width: 12),
-          Text(
-            _status!.model,
-            style: TextStyle(color: scheme.textDim, fontSize: 11, fontFamily: 'monospace'),
+          GlassCard(
+            scheme: scheme,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            blurSigma: 6,
+            borderRadius: 6,
+            child: Text(
+              _status!.model,
+              style: TextStyle(color: scheme.textDim, fontSize: 10, fontFamily: 'monospace'),
+            ),
           ),
           if (_status!.version.isNotEmpty) ...[
             const SizedBox(width: 8),
-            Text(
-              _status!.version,
-              style: TextStyle(color: scheme.textMuted, fontSize: 10, fontFamily: 'monospace'),
+            GlassCard(
+              scheme: scheme,
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              blurSigma: 4,
+              borderRadius: 4,
+              child: Text(
+                _status!.version,
+                style: TextStyle(color: scheme.textMuted, fontSize: 9, fontFamily: 'monospace'),
+              ),
             ),
           ],
         ],
@@ -267,7 +321,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         final cardWidth = (constraints.maxWidth - 48) / 4;
         return Row(
           children: [
-            _StatusCard(
+            _GlassStatusCard(
               scheme: scheme,
               width: cardWidth,
               label: 'SESSIONS',
@@ -279,7 +333,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   : null,
             ),
             const SizedBox(width: 16),
-            _StatusCard(
+            _GlassStatusCard(
               scheme: scheme,
               width: cardWidth,
               label: 'CRON JOBS',
@@ -289,7 +343,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               detail: activeCrons > 0 ? '$activeCrons active' : null,
             ),
             const SizedBox(width: 16),
-            _StatusCard(
+            _GlassStatusCard(
               scheme: scheme,
               width: cardWidth,
               label: 'GATEWAYS',
@@ -301,7 +355,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   : null,
             ),
             const SizedBox(width: 16),
-            _StatusCard(
+            _GlassStatusCard(
               scheme: scheme,
               width: cardWidth,
               label: 'MODEL',
@@ -320,21 +374,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: Text(
-            'QUICK ACTIONS',
-            style: TextStyle(
-              color: scheme.textMuted,
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 1.5,
-            ),
-          ),
-        ),
+        _GoldSectionHeader(scheme, 'QUICK ACTIONS'),
         Row(
           children: [
-            _ActionButton(
+            _GlassActionButton(
               scheme: scheme,
               label: 'New Chat',
               icon: Icons.add_circle_outline,
@@ -342,7 +385,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               onTap: _openTerminal,
             ),
             const SizedBox(width: 10),
-            _ActionButton(
+            _GlassActionButton(
               scheme: scheme,
               label: 'Open Logs',
               icon: Icons.terminal,
@@ -350,7 +393,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               onTap: _openLogs,
             ),
             const SizedBox(width: 10),
-            _ActionButton(
+            _GlassActionButton(
               scheme: scheme,
               label: 'Edit Config',
               icon: Icons.settings_outlined,
@@ -358,7 +401,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               onTap: _openConfig,
             ),
             const SizedBox(width: 10),
-            _ActionButton(
+            _GlassActionButton(
               scheme: scheme,
               label: 'Refresh',
               icon: Icons.refresh,
@@ -371,42 +414,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  void _openTerminal() {
-    widget.onNavigate?.call(1);
-  }
-
-  void _openLogs() {
-    widget.onNavigate?.call(5);
-  }
-
-  void _openConfig() {
-    widget.onNavigate?.call(4);
-  }
+  void _openTerminal() => widget.onNavigate?.call(1);
+  void _openLogs() => widget.onNavigate?.call(5);
+  void _openConfig() => widget.onNavigate?.call(4);
 
   Widget _buildRecentActivity(AppColorScheme scheme) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: Text(
-            'RECENT SESSIONS',
-            style: TextStyle(
-              color: scheme.textMuted,
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 1.5,
-            ),
-          ),
-        ),
+        _GoldSectionHeader(scheme, 'RECENT SESSIONS'),
         if (_recentSessions.isEmpty)
-          Container(
+          GlassCard(
+            scheme: scheme,
             width: double.infinity,
             padding: const EdgeInsets.all(32),
-            decoration: BoxDecoration(
-              border: Border.all(color: scheme.borderDim, width: 0.5),
-              borderRadius: BorderRadius.circular(8),
-            ),
+            borderRadius: 8,
             child: Column(
               children: [
                 Icon(Icons.inbox_outlined, size: 32, color: scheme.textMuted),
@@ -420,15 +442,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
             final s = _recentSessions[i];
             return Padding(
               padding: const EdgeInsets.only(bottom: 4),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                decoration: BoxDecoration(
-                  color: scheme.cardBackground,
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: scheme.borderDim.withValues(alpha: 0.3), width: 0.5),
-                ),
+              child: GlassCard(
+                scheme: scheme,
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                borderRadius: 6,
+                blurSigma: 6,
+                tintColor: scheme.cardBackground.withAlpha(180),
                 child: Row(
                   children: [
+                    Container(
+                      width: 4, height: 4,
+                      decoration: BoxDecoration(
+                        color: scheme.primary.withAlpha(120),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         s.title,
@@ -443,9 +472,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       style: TextStyle(color: scheme.textMuted, fontSize: 10, fontFamily: 'monospace'),
                     ),
                     const SizedBox(width: 12),
-                    Text(
-                      s.durationLabel,
-                      style: TextStyle(color: scheme.textMuted, fontSize: 11),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: scheme.surfaceAlt.withAlpha(120),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        s.durationLabel,
+                        style: TextStyle(color: scheme.textMuted, fontSize: 10),
+                      ),
                     ),
                   ],
                 ),
@@ -459,14 +495,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // ── Open Source & Support ──────────────────────────────────────────────
 
   Widget _buildOpenSourceSection(AppColorScheme scheme) {
-    return Container(
+    return GlassCard(
+      scheme: scheme,
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: scheme.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: scheme.borderDim, width: 0.5),
-      ),
+      padding: const EdgeInsets.all(18),
+      borderRadius: 10,
+      blurSigma: 8,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -477,28 +511,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Text('Open Source', style: TextStyle(color: scheme.primary, fontWeight: FontWeight.w600, fontSize: 13)),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Text(
             'Hermes Wingman is free and open source software. '
             'Built with Flutter (frontend) and Rust (backend) — '
             'everyone is welcome to contribute, fork, and build.',
-            style: TextStyle(color: scheme.textDim, fontSize: 11, height: 1.5),
+            style: TextStyle(color: scheme.textDim, fontSize: 11, height: 1.6),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           Row(
             children: [
-              _SupportButton(
-                scheme: scheme,
-                icon: Icons.code,
-                label: 'View Source',
-                onTap: () {},
+              Expanded(
+                child: _GlassSupportBtn(
+                  scheme: scheme,
+                  icon: Icons.code,
+                  label: 'View Source',
+                  onTap: () => launchUrl(Uri.parse('https://github.com/synthalorian/hermes-wingman')),
+                ),
               ),
               const SizedBox(width: 10),
-              _SupportButton(
-                scheme: scheme,
-                icon: Icons.favorite_outline,
-                label: 'Buy Me a Coffee',
-                onTap: () {},
+              Expanded(
+                child: _GlassSupportBtn(
+                  scheme: scheme,
+                  icon: Icons.favorite_outline,
+                  label: 'Buy Me a Coffee',
+                  onTap: () => launchUrl(Uri.parse('https://buymeacoffee.com/synthalorian')),
+                ),
               ),
             ],
           ),
@@ -508,50 +546,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 }
 
-class _SupportButton extends StatelessWidget {
-  final AppColorScheme scheme;
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
+// ── Glass-themed Status Card ──────────────────────────────────────────────
 
-  const _SupportButton({
-    required this.scheme,
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Material(
-        color: scheme.surfaceAlt,
-        borderRadius: BorderRadius.circular(6),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(6),
-          onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: scheme.borderDim, width: 0.5),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(icon, size: 14, color: scheme.primary),
-                const SizedBox(width: 6),
-                Text(label, style: TextStyle(color: scheme.text, fontSize: 12)),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _StatusCard extends StatelessWidget {
+class _GlassStatusCard extends StatelessWidget {
   final AppColorScheme scheme;
   final double width;
   final String label;
@@ -560,7 +557,7 @@ class _StatusCard extends StatelessWidget {
   final Color color;
   final String? detail;
 
-  const _StatusCard({
+  const _GlassStatusCard({
     required this.scheme,
     required this.width,
     required this.label,
@@ -572,14 +569,11 @@ class _StatusCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return AccentGlassCard(
+      scheme: scheme,
       width: width,
+      accentColor: color,
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: scheme.cardBackground,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: scheme.borderDim, width: 0.5),
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -623,14 +617,16 @@ class _StatusCard extends StatelessWidget {
   }
 }
 
-class _ActionButton extends StatelessWidget {
+// ── Glass Action Button ──────────────────────────────────────────────────
+
+class _GlassActionButton extends StatelessWidget {
   final AppColorScheme scheme;
   final String label;
   final IconData icon;
   final Color color;
   final VoidCallback onTap;
 
-  const _ActionButton({
+  const _GlassActionButton({
     required this.scheme,
     required this.label,
     required this.icon,
@@ -640,32 +636,140 @@ class _ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: scheme.surfaceAlt,
-      borderRadius: BorderRadius.circular(8),
-      child: InkWell(
+    return Expanded(
+      child: Material(
+        color: Colors.transparent,
         borderRadius: BorderRadius.circular(8),
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          decoration: BoxDecoration(
+        child: InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: onTap,
+          child: ClipRRect(
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: scheme.borderDim, width: 0.5),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 16, color: color),
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: TextStyle(
-                  color: scheme.text,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
+            child: BackdropFilter(
+              filter: ui.ImageFilter.blur(sigmaX: 6, sigmaY: 6),
+              child: Material(
+                type: MaterialType.transparency,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  decoration: BoxDecoration(
+                    color: scheme.surfaceAlt.withAlpha(150),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: scheme.borderDim.withAlpha(40), width: 0.5),
+                    boxShadow: [
+                      BoxShadow(color: color.withAlpha(15), blurRadius: 6),
+                    ],
+                  ),
+                  foregroundDecoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border(top: BorderSide(color: color.withAlpha(40), width: 0.5)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(icon, size: 15, color: color),
+                      const SizedBox(width: 8),
+                      Text(
+                        label,
+                        style: TextStyle(
+                          color: scheme.text,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Glass Version Badge ─────────────────────────────────────────────────
+
+class _GlassVersionBadge extends StatelessWidget {
+  final AppColorScheme scheme;
+  const _GlassVersionBadge({required this.scheme});
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(4),
+      child: BackdropFilter(
+        filter: ui.ImageFilter.blur(sigmaX: 4, sigmaY: 4),
+        child: Material(
+          type: MaterialType.transparency,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: scheme.borderDim.withAlpha(30),
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: scheme.borderDim.withAlpha(50), width: 0.5),
+            ),
+            child: Text(
+              'v0.1.0',
+              style: TextStyle(
+                color: scheme.textMuted,
+                fontSize: 10,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Glass Support Button ─────────────────────────────────────────────────
+
+class _GlassSupportBtn extends StatelessWidget {
+  final AppColorScheme scheme;
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _GlassSupportBtn({
+    required this.scheme,
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(6),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(6),
+        onTap: onTap,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: BackdropFilter(
+            filter: ui.ImageFilter.blur(sigmaX: 4, sigmaY: 4),
+            child: Material(
+              type: MaterialType.transparency,
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: scheme.surfaceAlt.withAlpha(150),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: scheme.borderDim.withAlpha(40), width: 0.5),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(icon, size: 13, color: scheme.primary),
+                    const SizedBox(width: 6),
+                    Text(label, style: TextStyle(color: scheme.text, fontSize: 11)),
+                  ],
+                ),
+              ),
+            ),
           ),
         ),
       ),

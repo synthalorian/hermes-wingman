@@ -1054,7 +1054,7 @@ async fn chat_stream_handler(
             .to_string();
 
         if base_url.is_empty() || oauth_providers().contains(provider_name) {
-            // Fallback to hermes CLI
+            // Fallback to hermes CLI — use -z (oneshot) for clean output
             let mut args = vec!["-z", &message];
             if let Some(sid) = &session_id {
                 if !sid.is_empty() {
@@ -2343,7 +2343,7 @@ async fn main() {
         .layer(CorsLayer::permissive())
         .with_state(state);
 
-    let addr = "127.0.0.1:9120";
+    let addr = std::env::var("BIND_ADDR").unwrap_or_else(|_| "127.0.0.1:9120".to_string());
     println!("Hermes Wingman backend running on http://{}", addr);
     println!("Hermes home: {:?}", AppState::new().hermes_home);
 

@@ -171,29 +171,30 @@ const cyberpunk = AppColorScheme(
   error: Color(0xFFFF0040),
 );
 
-// ── Hermes Brand ────────────────────────────────────────────────────────────
-// Deep forest teal, cream headers, sage green accents, classical/etched vibe.
-// Inspired by hermes-agent.nousresearch.com
+// ── Hermes Brand (FLAGSHIP) ─────────────────────────────────────────────
+// The god of messengers, travelers, boundaries, commerce.
+// Deep forest teal canvas, celestial gold herald, glowing sage green accents.
+// Rich contrast with luminous text — the default for Hermes Wingman.
 const hermes = AppColorScheme(
-  background: Color(0xFF051412),
-  surface: Color(0xFF0A1F1C),
-  surfaceAlt: Color(0xFF0F2925),
-  primary: Color(0xFFF5F0E8),
+  background: Color(0xFF030D0B),
+  surface: Color(0xFF081A16),
+  surfaceAlt: Color(0xFF0D241F),
+  primary: Color(0xFFFFD700),
   secondary: Color(0xFF8BA888),
-  accent: Color(0xFF4A6B5D),
-  text: Color(0xFFE8E8D8),
-  textDim: Color(0xFF889988),
-  textMuted: Color(0xFF556655),
-  border: Color(0xFF4A6B5D),
-  borderDim: Color(0xFF1A2F2A),
-  cardBackground: Color(0xFF0A1F1C),
-  selectedBackground: Color(0xFF0F2925),
-  scaffoldBackground: Color(0xFF051412),
-  appBarBackground: Color(0xFF030D0B),
-  bottomNavBackground: Color(0xFF030D0B),
+  accent: Color(0xFF00D4AA),
+  text: Color(0xFFFFF8F0),
+  textDim: Color(0xFFA0B8A8),
+  textMuted: Color(0xFF4A6B5D),
+  border: Color(0xFFFFD700),
+  borderDim: Color(0xFF1A3A2E),
+  cardBackground: Color(0xFF081A16),
+  selectedBackground: Color(0xFF0D241F),
+  scaffoldBackground: Color(0xFF030D0B),
+  appBarBackground: Color(0xFF020A08),
+  bottomNavBackground: Color(0xFF020A08),
   success: Color(0xFF8DE0A0),
   warning: Color(0xFFD4A040),
-  error: Color(0xFFD04A5A),
+  error: Color(0xFFFF5A6A),
 );
 
 // ── GREEK PANTHEON ──────────────────────────────────────────────────────
@@ -203,9 +204,9 @@ const zeus = AppColorScheme(
   background: Color(0xFF0D0A1A), surface: Color(0xFF1A1530), surfaceAlt: Color(0xFF282045),
   primary: Color(0xFFC9A84C), secondary: Color(0xFF4A7CFF), accent: Color(0xFF00D4FF),
   text: Color(0xFFFFF8F0), textDim: Color(0xFFB0A8C0), textMuted: Color(0xFF706880),
-  border: Color(0xFFC9A84C), borderDim: Color(0xFF1A153080),
+  border: Color(0xFFC9A84C), borderDim: Color(0x801A1530),
   cardBackground: Color(0xFF1A1530), selectedBackground: Color(0xFF282045),
-  scaffoldBackground: Color(0xFF0D0A1A), appBarBackground: Color(0xFF0D0A1A80), bottomNavBackground: Color(0xFF0D0A1A80),
+  scaffoldBackground: Color(0xFF0D0A1A), appBarBackground: Color(0x800D0A1A), bottomNavBackground: Color(0x800D0A1A),
 );
 
 /// Poseidon — Sea God: Deep ocean blue, teal, seafoam, coral
@@ -213,9 +214,9 @@ const poseidon = AppColorScheme(
   background: Color(0xFF061214), surface: Color(0xFF0A1F22), surfaceAlt: Color(0xFF0F2A2E),
   primary: Color(0xFF0077B6), secondary: Color(0xFF00B4D8), accent: Color(0xFF48CAE4),
   text: Color(0xFFFFF8F0), textDim: Color(0xFFB0A8C0), textMuted: Color(0xFF706880),
-  border: Color(0xFF0077B6), borderDim: Color(0xFF0A1F2280),
+  border: Color(0xFF0077B6), borderDim: Color(0x800A1F22),
   cardBackground: Color(0xFF0A1F22), selectedBackground: Color(0xFF0F2A2E),
-  scaffoldBackground: Color(0xFF061214), appBarBackground: Color(0xFF06121480), bottomNavBackground: Color(0xFF06121480),
+  scaffoldBackground: Color(0xFF061214), appBarBackground: Color(0x80061214), bottomNavBackground: Color(0x80061214),
 );
 
 /// Hades — Underworld: Obsidian black, ember green, flame orange
@@ -223,9 +224,9 @@ const hades = AppColorScheme(
   background: Color(0xFF0A0A0A), surface: Color(0xFF141010), surfaceAlt: Color(0xFF1F1515),
   primary: Color(0xFFFF6B35), secondary: Color(0xFF00D4AA), accent: Color(0xFFFFD166),
   text: Color(0xFFFFF8F0), textDim: Color(0xFFB0A8C0), textMuted: Color(0xFF706880),
-  border: Color(0xFFFF6B35), borderDim: Color(0xFF14101080),
+  border: Color(0xFFFF6B35), borderDim: Color(0x80141010),
   cardBackground: Color(0xFF141010), selectedBackground: Color(0xFF1F1515),
-  scaffoldBackground: Color(0xFF0A0A0A), appBarBackground: Color(0xFF0A0A0A80), bottomNavBackground: Color(0xFF0A0A0A80),
+  scaffoldBackground: Color(0xFF0A0A0A), appBarBackground: Color(0x800A0A0A), bottomNavBackground: Color(0x800A0A0A),
 );
 
 /// Ares — War: Blood crimson, iron grey, bronze, fire
@@ -233,9 +234,9 @@ const ares = AppColorScheme(
   background: Color(0xFF0F0505), surface: Color(0xFF1F0A0A), surfaceAlt: Color(0xFF2F0F0F),
   primary: Color(0xFFDC143C), secondary: Color(0xFF8B8B8B), accent: Color(0xFFCD7F32),
   text: Color(0xFFFFF8F0), textDim: Color(0xFFB0A8C0), textMuted: Color(0xFF706880),
-  border: Color(0xFFDC143C), borderDim: Color(0xFF1F0A0A80),
+  border: Color(0xFFDC143C), borderDim: Color(0x801F0A0A),
   cardBackground: Color(0xFF1F0A0A), selectedBackground: Color(0xFF2F0F0F),
-  scaffoldBackground: Color(0xFF0F0505), appBarBackground: Color(0xFF0F050580), bottomNavBackground: Color(0xFF0F050580),
+  scaffoldBackground: Color(0xFF0F0505), appBarBackground: Color(0x800F0505), bottomNavBackground: Color(0x800F0505),
 );
 
 /// Apollo — Sun/Arts: Golden radiance, warm orange, sky blue
@@ -243,9 +244,9 @@ const apollo = AppColorScheme(
   background: Color(0xFF0F0A05), surface: Color(0xFF1F150A), surfaceAlt: Color(0xFF2F1F0F),
   primary: Color(0xFFFFB703), secondary: Color(0xFFFB8500), accent: Color(0xFF00B4D8),
   text: Color(0xFFFFF8F0), textDim: Color(0xFFB0A8C0), textMuted: Color(0xFF706880),
-  border: Color(0xFFFFB703), borderDim: Color(0xFF1F150A80),
+  border: Color(0xFFFFB703), borderDim: Color(0x801F150A),
   cardBackground: Color(0xFF1F150A), selectedBackground: Color(0xFF2F1F0F),
-  scaffoldBackground: Color(0xFF0F0A05), appBarBackground: Color(0xFF0F0A0580), bottomNavBackground: Color(0xFF0F0A0580),
+  scaffoldBackground: Color(0xFF0F0A05), appBarBackground: Color(0x800F0A05), bottomNavBackground: Color(0x800F0A05),
 );
 
 /// Artemis — Hunt/Moon: Silver lunar, forest green, midnight blue
@@ -253,9 +254,9 @@ const artemis = AppColorScheme(
   background: Color(0xFF0A0D12), surface: Color(0xFF0F1820), surfaceAlt: Color(0xFF152230),
   primary: Color(0xFFC0C0C0), secondary: Color(0xFF2D6A4F), accent: Color(0xFF1B4332),
   text: Color(0xFFFFF8F0), textDim: Color(0xFFB0A8C0), textMuted: Color(0xFF706880),
-  border: Color(0xFFC0C0C0), borderDim: Color(0xFF0F182080),
+  border: Color(0xFFC0C0C0), borderDim: Color(0x800F1820),
   cardBackground: Color(0xFF0F1820), selectedBackground: Color(0xFF152230),
-  scaffoldBackground: Color(0xFF0A0D12), appBarBackground: Color(0xFF0A0D1280), bottomNavBackground: Color(0xFF0A0D1280),
+  scaffoldBackground: Color(0xFF0A0D12), appBarBackground: Color(0x800A0D12), bottomNavBackground: Color(0x800A0D12),
 );
 
 /// Athena — Wisdom: Sapphire blue, olive green, marble, gold
@@ -263,9 +264,9 @@ const athena = AppColorScheme(
   background: Color(0xFF0A0D0F), surface: Color(0xFF101820), surfaceAlt: Color(0xFF182830),
   primary: Color(0xFF1D3557), secondary: Color(0xFFA7C957), accent: Color(0xFFE9C46A),
   text: Color(0xFFFFF8F0), textDim: Color(0xFFB0A8C0), textMuted: Color(0xFF706880),
-  border: Color(0xFF1D3557), borderDim: Color(0xFF10182080),
+  border: Color(0xFF1D3557), borderDim: Color(0x80101820),
   cardBackground: Color(0xFF101820), selectedBackground: Color(0xFF182830),
-  scaffoldBackground: Color(0xFF0A0D0F), appBarBackground: Color(0xFF0A0D0F80), bottomNavBackground: Color(0xFF0A0D0F80),
+  scaffoldBackground: Color(0xFF0A0D0F), appBarBackground: Color(0x800A0D0F), bottomNavBackground: Color(0x800A0D0F),
 );
 
 /// Aphrodite — Love: Rose pink, deep crimson, pearl, soft gold
@@ -273,9 +274,9 @@ const aphrodite = AppColorScheme(
   background: Color(0xFF140A0F), surface: Color(0xFF241018), surfaceAlt: Color(0xFF341828),
   primary: Color(0xFFE91E63), secondary: Color(0xFFFFB6C1), accent: Color(0xFFFFD700),
   text: Color(0xFFFFF8F0), textDim: Color(0xFFB0A8C0), textMuted: Color(0xFF706880),
-  border: Color(0xFFE91E63), borderDim: Color(0xFF24101880),
+  border: Color(0xFFE91E63), borderDim: Color(0x80241018),
   cardBackground: Color(0xFF241018), selectedBackground: Color(0xFF341828),
-  scaffoldBackground: Color(0xFF140A0F), appBarBackground: Color(0xFF140A0F80), bottomNavBackground: Color(0xFF140A0F80),
+  scaffoldBackground: Color(0xFF140A0F), appBarBackground: Color(0x80140A0F), bottomNavBackground: Color(0x80140A0F),
 );
 
 /// Dionysus — Wine/Festival: Wine red, grape purple, vine green
@@ -283,9 +284,9 @@ const dionysus = AppColorScheme(
   background: Color(0xFF120810), surface: Color(0xFF201020), surfaceAlt: Color(0xFF301830),
   primary: Color(0xFF722F37), secondary: Color(0xFF9B59B6), accent: Color(0xFF7DCEA0),
   text: Color(0xFFFFF8F0), textDim: Color(0xFFB0A8C0), textMuted: Color(0xFF706880),
-  border: Color(0xFF722F37), borderDim: Color(0xFF20102080),
+  border: Color(0xFF722F37), borderDim: Color(0x80201020),
   cardBackground: Color(0xFF201020), selectedBackground: Color(0xFF301830),
-  scaffoldBackground: Color(0xFF120810), appBarBackground: Color(0xFF12081080), bottomNavBackground: Color(0xFF12081080),
+  scaffoldBackground: Color(0xFF120810), appBarBackground: Color(0x80120810), bottomNavBackground: Color(0x80120810),
 );
 
 /// Demeter — Harvest: Wheat gold, earthy brown, leaf green
@@ -293,9 +294,9 @@ const demeter = AppColorScheme(
   background: Color(0xFF0F0E0A), surface: Color(0xFF1A1810), surfaceAlt: Color(0xFF282218),
   primary: Color(0xFFD4A373), secondary: Color(0xFF588157), accent: Color(0xFFF4A261),
   text: Color(0xFFFFF8F0), textDim: Color(0xFFB0A8C0), textMuted: Color(0xFF706880),
-  border: Color(0xFFD4A373), borderDim: Color(0xFF1A181080),
+  border: Color(0xFFD4A373), borderDim: Color(0x801A1810),
   cardBackground: Color(0xFF1A1810), selectedBackground: Color(0xFF282218),
-  scaffoldBackground: Color(0xFF0F0E0A), appBarBackground: Color(0xFF0F0E0A80), bottomNavBackground: Color(0xFF0F0E0A80),
+  scaffoldBackground: Color(0xFF0F0E0A), appBarBackground: Color(0x800F0E0A), bottomNavBackground: Color(0x800F0E0A),
 );
 
 /// Hephaestus — Forge: Molten orange, steel grey, ember red
@@ -303,9 +304,9 @@ const hephaestus = AppColorScheme(
   background: Color(0xFF080808), surface: Color(0xFF151515), surfaceAlt: Color(0xFF252020),
   primary: Color(0xFFFF6D00), secondary: Color(0xFF6C6C6C), accent: Color(0xFFFF3D00),
   text: Color(0xFFFFF8F0), textDim: Color(0xFFB0A8C0), textMuted: Color(0xFF706880),
-  border: Color(0xFFFF6D00), borderDim: Color(0xFF15151580),
+  border: Color(0xFFFF6D00), borderDim: Color(0x80151515),
   cardBackground: Color(0xFF151515), selectedBackground: Color(0xFF252020),
-  scaffoldBackground: Color(0xFF080808), appBarBackground: Color(0xFF08080880), bottomNavBackground: Color(0xFF08080880),
+  scaffoldBackground: Color(0xFF080808), appBarBackground: Color(0x80080808), bottomNavBackground: Color(0x80080808),
 );
 
 /// Hestia — Hearth: Warm amber, brick red, cream, soft orange
@@ -313,9 +314,9 @@ const hestia = AppColorScheme(
   background: Color(0xFF120E08), surface: Color(0xFF201810), surfaceAlt: Color(0xFF302218),
   primary: Color(0xFFE76F51), secondary: Color(0xFFF4A261), accent: Color(0xFFE9C46A),
   text: Color(0xFFFFF8F0), textDim: Color(0xFFB0A8C0), textMuted: Color(0xFF706880),
-  border: Color(0xFFE76F51), borderDim: Color(0xFF20181080),
+  border: Color(0xFFE76F51), borderDim: Color(0x80201810),
   cardBackground: Color(0xFF201810), selectedBackground: Color(0xFF302218),
-  scaffoldBackground: Color(0xFF120E08), appBarBackground: Color(0xFF120E0880), bottomNavBackground: Color(0xFF120E0880),
+  scaffoldBackground: Color(0xFF120E08), appBarBackground: Color(0x80120E08), bottomNavBackground: Color(0x80120E08),
 );
 
 /// Nyx — Night: Deep purple-black, star silver, midnight
@@ -323,9 +324,9 @@ const nyx = AppColorScheme(
   background: Color(0xFF05030F), surface: Color(0xFF0A0720), surfaceAlt: Color(0xFF100B30),
   primary: Color(0xFF7B2D8E), secondary: Color(0xFFE0BBE4), accent: Color(0xFF3D5A80),
   text: Color(0xFFFFF8F0), textDim: Color(0xFFB0A8C0), textMuted: Color(0xFF706880),
-  border: Color(0xFF7B2D8E), borderDim: Color(0xFF0A072080),
+  border: Color(0xFF7B2D8E), borderDim: Color(0x800A0720),
   cardBackground: Color(0xFF0A0720), selectedBackground: Color(0xFF100B30),
-  scaffoldBackground: Color(0xFF05030F), appBarBackground: Color(0xFF05030F80), bottomNavBackground: Color(0xFF05030F80),
+  scaffoldBackground: Color(0xFF05030F), appBarBackground: Color(0x8005030F), bottomNavBackground: Color(0x8005030F),
 );
 
 /// Eos — Dawn: Rosy pink, golden orange, soft lavender, sky blue
@@ -333,9 +334,9 @@ const eos = AppColorScheme(
   background: Color(0xFF120A0F), surface: Color(0xFF201520), surfaceAlt: Color(0xFF302030),
   primary: Color(0xFFFF9E9E), secondary: Color(0xFFFFC8A2), accent: Color(0xFF87CEEB),
   text: Color(0xFFFFF8F0), textDim: Color(0xFFB0A8C0), textMuted: Color(0xFF706880),
-  border: Color(0xFFFF9E9E), borderDim: Color(0xFF20152080),
+  border: Color(0xFFFF9E9E), borderDim: Color(0x80201520),
   cardBackground: Color(0xFF201520), selectedBackground: Color(0xFF302030),
-  scaffoldBackground: Color(0xFF120A0F), appBarBackground: Color(0xFF120A0F80), bottomNavBackground: Color(0xFF120A0F80),
+  scaffoldBackground: Color(0xFF120A0F), appBarBackground: Color(0x80120A0F), bottomNavBackground: Color(0x80120A0F),
 );
 
 /// Hypnos — Sleep: Soft lavender, midnight blue, silvery dream
@@ -343,9 +344,9 @@ const hypnos = AppColorScheme(
   background: Color(0xFF080A14), surface: Color(0xFF101828), surfaceAlt: Color(0xFF182838),
   primary: Color(0xFF9B72CF), secondary: Color(0xFF6B8DD6), accent: Color(0xFFC8B6E5),
   text: Color(0xFFFFF8F0), textDim: Color(0xFFB0A8C0), textMuted: Color(0xFF706880),
-  border: Color(0xFF9B72CF), borderDim: Color(0xFF10182880),
+  border: Color(0xFF9B72CF), borderDim: Color(0x80101828),
   cardBackground: Color(0xFF101828), selectedBackground: Color(0xFF182838),
-  scaffoldBackground: Color(0xFF080A14), appBarBackground: Color(0xFF080A1480), bottomNavBackground: Color(0xFF080A1480),
+  scaffoldBackground: Color(0xFF080A14), appBarBackground: Color(0x80080A14), bottomNavBackground: Color(0x80080A14),
 );
 
 /// Iris — Rainbow: Multicolor spectrum, bright cyan, pink, gold
@@ -353,9 +354,9 @@ const iris = AppColorScheme(
   background: Color(0xFF0A0A12), surface: Color(0xFF181828), surfaceAlt: Color(0xFF282838),
   primary: Color(0xFF00BCD4), secondary: Color(0xFFFF69B4), accent: Color(0xFFFFD700),
   text: Color(0xFFFFF8F0), textDim: Color(0xFFB0A8C0), textMuted: Color(0xFF706880),
-  border: Color(0xFF00BCD4), borderDim: Color(0xFF18182880),
+  border: Color(0xFF00BCD4), borderDim: Color(0x80181828),
   cardBackground: Color(0xFF181828), selectedBackground: Color(0xFF282838),
-  scaffoldBackground: Color(0xFF0A0A12), appBarBackground: Color(0xFF0A0A1280), bottomNavBackground: Color(0xFF0A0A1280),
+  scaffoldBackground: Color(0xFF0A0A12), appBarBackground: Color(0x800A0A12), bottomNavBackground: Color(0x800A0A12),
 );
 
 /// Tyche — Fortune: Emerald green, lucky gold, red accents
@@ -363,9 +364,9 @@ const tyche = AppColorScheme(
   background: Color(0xFF080C08), surface: Color(0xFF101810), surfaceAlt: Color(0xFF182418),
   primary: Color(0xFF2D6A4F), secondary: Color(0xFFD4AF37), accent: Color(0xFFE63946),
   text: Color(0xFFFFF8F0), textDim: Color(0xFFB0A8C0), textMuted: Color(0xFF706880),
-  border: Color(0xFF2D6A4F), borderDim: Color(0xFF10181080),
+  border: Color(0xFF2D6A4F), borderDim: Color(0x80101810),
   cardBackground: Color(0xFF101810), selectedBackground: Color(0xFF182418),
-  scaffoldBackground: Color(0xFF080C08), appBarBackground: Color(0xFF080C0880), bottomNavBackground: Color(0xFF080C0880),
+  scaffoldBackground: Color(0xFF080C08), appBarBackground: Color(0x80080C08), bottomNavBackground: Color(0x80080C08),
 );
 
 /// Thanatos — Death: Pale grey, bone white, deep black, dark teal
@@ -373,9 +374,9 @@ const thanatos = AppColorScheme(
   background: Color(0xFF080808), surface: Color(0xFF121212), surfaceAlt: Color(0xFF1C1C1C),
   primary: Color(0xFFD4D4D4), secondary: Color(0xFF2F4F4F), accent: Color(0xFFF5F5DC),
   text: Color(0xFFFFF8F0), textDim: Color(0xFFB0A8C0), textMuted: Color(0xFF706880),
-  border: Color(0xFFD4D4D4), borderDim: Color(0xFF12121280),
+  border: Color(0xFFD4D4D4), borderDim: Color(0x80121212),
   cardBackground: Color(0xFF121212), selectedBackground: Color(0xFF1C1C1C),
-  scaffoldBackground: Color(0xFF080808), appBarBackground: Color(0xFF08080880), bottomNavBackground: Color(0xFF08080880),
+  scaffoldBackground: Color(0xFF080808), appBarBackground: Color(0x80080808), bottomNavBackground: Color(0x80080808),
 );
 
 /// Nemesis — Retribution: Dark red, black, steel grey, amber
@@ -383,9 +384,9 @@ const nemesis = AppColorScheme(
   background: Color(0xFF0A0505), surface: Color(0xFF150A0A), surfaceAlt: Color(0xFF201010),
   primary: Color(0xFF8B0000), secondary: Color(0xFF708090), accent: Color(0xFFFFBF00),
   text: Color(0xFFFFF8F0), textDim: Color(0xFFB0A8C0), textMuted: Color(0xFF706880),
-  border: Color(0xFF8B0000), borderDim: Color(0xFF150A0A80),
+  border: Color(0xFF8B0000), borderDim: Color(0x80150A0A),
   cardBackground: Color(0xFF150A0A), selectedBackground: Color(0xFF201010),
-  scaffoldBackground: Color(0xFF0A0505), appBarBackground: Color(0xFF0A050580), bottomNavBackground: Color(0xFF0A050580),
+  scaffoldBackground: Color(0xFF0A0505), appBarBackground: Color(0x800A0505), bottomNavBackground: Color(0x800A0505),
 );
 
 /// Hecate — Magic/Witchcraft: Deep purple, eerie green, silver
@@ -393,9 +394,9 @@ const hecate = AppColorScheme(
   background: Color(0xFF0A0510), surface: Color(0xFF140A20), surfaceAlt: Color(0xFF201030),
   primary: Color(0xFF5B2C8E), secondary: Color(0xFF00FF87), accent: Color(0xFFC0C0C0),
   text: Color(0xFFFFF8F0), textDim: Color(0xFFB0A8C0), textMuted: Color(0xFF706880),
-  border: Color(0xFF5B2C8E), borderDim: Color(0xFF140A2080),
+  border: Color(0xFF5B2C8E), borderDim: Color(0x80140A20),
   cardBackground: Color(0xFF140A20), selectedBackground: Color(0xFF201030),
-  scaffoldBackground: Color(0xFF0A0510), appBarBackground: Color(0xFF0A051080), bottomNavBackground: Color(0xFF0A051080),
+  scaffoldBackground: Color(0xFF0A0510), appBarBackground: Color(0x800A0510), bottomNavBackground: Color(0x800A0510),
 );
 
 /// Hera — Queen of Gods: Royal purple, peacock blue, gold, regal white
@@ -403,9 +404,9 @@ const hera = AppColorScheme(
   background: Color(0xFF0E0814), surface: Color(0xFF1C1030), surfaceAlt: Color(0xFF2A1848),
   primary: Color(0xFF6A0DAD), secondary: Color(0xFF1E90FF), accent: Color(0xFFFFD700),
   text: Color(0xFFFFF8F0), textDim: Color(0xFFB0A8C0), textMuted: Color(0xFF706880),
-  border: Color(0xFF6A0DAD), borderDim: Color(0xFF1C103080),
+  border: Color(0xFF6A0DAD), borderDim: Color(0x801C1030),
   cardBackground: Color(0xFF1C1030), selectedBackground: Color(0xFF2A1848),
-  scaffoldBackground: Color(0xFF0E0814), appBarBackground: Color(0xFF0E081480), bottomNavBackground: Color(0xFF0E081480),
+  scaffoldBackground: Color(0xFF0E0814), appBarBackground: Color(0x800E0814), bottomNavBackground: Color(0x800E0814),
 );
 
 // ── Light / Professional ────────────────────────────────────────────────────
@@ -473,6 +474,7 @@ ThemeData themeDataFromScheme(AppColorScheme scheme) {
   return ThemeData(
     useMaterial3: true,
     brightness: isDark ? Brightness.dark : Brightness.light,
+    fontFamily: '"Inter", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif',
     scaffoldBackgroundColor: scheme.scaffoldBackground,
     colorScheme: ColorScheme(
       brightness: isDark ? Brightness.dark : Brightness.light,
@@ -493,7 +495,7 @@ ThemeData themeDataFromScheme(AppColorScheme scheme) {
       backgroundColor: scheme.appBarBackground,
       foregroundColor: scheme.text,
       elevation: 0,
-      scrolledUnderElevation: 0.5,
+      scrolledUnderElevation: 0,
     ),
     cardTheme: CardThemeData(
       color: scheme.cardBackground,
