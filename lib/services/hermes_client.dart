@@ -444,4 +444,146 @@ class HermesClient implements HermesService {
         return '🔌';
     }
   }
+
+  // ── Skills ──────────────────────────────────────────────────────────
+
+  @override
+  Future<List<SkillEntry>> listSkills() async {
+    try {
+      final output = await runHermesCommand(['skills', 'list']);
+      final lines = output.split('\n');
+      final skills = <SkillEntry>[];
+      for (final line in lines) {
+        if (line.contains('│') && !line.contains('━━━') && !line.contains('───')) {
+          final parts = line.split('│');
+          if (parts.length >= 2) {
+            final name = parts[1].trim();
+            if (name.isNotEmpty && !name.startsWith('Name')) {
+              skills.add(SkillEntry(
+                name: name,
+                category: parts.length > 2 ? parts[2].trim() : '',
+              ));
+            }
+          }
+        }
+      }
+      return skills;
+    } catch (_) {
+      return [];
+    }
+  }
+
+  @override
+  Future<bool> toggleSkill(String name, {String action = 'toggle'}) async {
+    try {
+      await runHermesCommand(['skills', action, name]);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // ── Memory ──────────────────────────────────────────────────────────
+
+  @override
+  Future<List<MemoryEntry>> listMemory() async {
+    try {
+      final output = await runHermesCommand(['memory', 'list']);
+      final lines = output.split('\n');
+      return lines
+          .where((l) => l.trim().isNotEmpty)
+          .map((l) => MemoryEntry(key: l.trim(), content: l.trim()))
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  @override
+  Future<MemoryEntry?> getMemory(String id) async {
+    try {
+      final output = await runHermesCommand(['memory', 'get', id]);
+      return MemoryEntry(key: id, content: output.trim(), id: id);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
+  Future<bool> deleteMemory(String id) async {
+    try {
+      await runHermesCommand(['memory', 'delete', id]);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  @override
+  Future<List<MemoryEntry>> searchMemory(String query) async {
+    try {
+      final output = await runHermesCommand(['memory', 'search', query]);
+      return output.split('\n')
+          .where((l) => l.trim().isNotEmpty)
+          .map((l) => MemoryEntry(key: l.trim(), content: l.trim()))
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  // ── Files ───────────────────────────────────────────────────────────
+
+  @override
+  Future<FileListing> listFiles({String path = ''}) async {
+    // On desktop, read files directly
+    try {
+      final dir = Directory('${Platform.environment['HOME'] ?? '/tmp'}/.hermes');
+      final target = path.isEmpty ? dir : Directory('${dir.path}/$path');
+      if (!target.existsSync()) return FileListing(path: target.path);
+      final entries = target.listSync();
+      final dirs = <String>[];
+      final files = <String>[];
+      for (final e in entries) {
+        final name = e.path.split('/').last;
+        if (name.startsWith('.')) continue;
+        if (e is Directory) { dirs.add(name); } else { files.add(name); }
+      }
+      dirs.sort();
+      files.sort();
+      return FileListing(
+        path: target.path,
+        directories: dirs,
+        files: files,
+        parent: path.contains('/') ? path.substring(0, path.lastIndexOf('/')) : '',
+      );
+    } catch (_) {
+      return FileListing();
+    }
+  }
+
+  @override
+  Future<String?> readFile(String path) async {
+    try {
+      final home = Platform.environment['HOME'] ?? '/tmp';
+      final file = File('$home/.hermes/$path');
+      if (!file.existsSync()) return null;
+      return file.readAsStringSync();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
+  Future<bool> writeFile(String path, String content) async {
+    try {
+      final home = Platform.environment['HOME'] ?? '/tmp';
+      final file = File('$home/.hermes/$path');
+      file.parent.createSync(recursive: true);
+      file.writeAsStringSync(content);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
 }

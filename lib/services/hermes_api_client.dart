@@ -197,8 +197,12 @@ class BackendService extends ChangeNotifier implements HermesService {
 
   // ── HTTP Helpers ──────────────────────────────────────────────────────
 
-  Future<Map<String, dynamic>> _get(String path) async {
-    final request = await _client.getUrl(Uri.parse('$_baseUrl$path'));
+  Future<Map<String, dynamic>> _get(String path, [Map<String, String>? queryParams]) async {
+    var uri = Uri.parse('$_baseUrl$path');
+    if (queryParams != null && queryParams.isNotEmpty) {
+      uri = uri.replace(queryParameters: queryParams);
+    }
+    final request = await _client.getUrl(uri);
     request.headers.set('Content-Type', 'application/json');
     final response = await request.close();
     final body = await response.transform(utf8.decoder).join();
@@ -216,6 +220,29 @@ class BackendService extends ChangeNotifier implements HermesService {
     final responseBody = await response.transform(utf8.decoder).join();
     if (response.statusCode != 200) {
       throw HermesClientException('HTTP ${response.statusCode}: $responseBody', command: 'POST $path');
+    }
+    return jsonDecode(responseBody) as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> _deleteRequest(String path) async {
+    final request = await _client.deleteUrl(Uri.parse('$_baseUrl$path'));
+    request.headers.set('Content-Type', 'application/json');
+    final response = await request.close();
+    final responseBody = await response.transform(utf8.decoder).join();
+    if (response.statusCode != 200) {
+      throw HermesClientException('HTTP ${response.statusCode}: $responseBody', command: 'DELETE $path');
+    }
+    return jsonDecode(responseBody) as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> _put(String path, Map<String, dynamic> body) async {
+    final request = await _client.putUrl(Uri.parse('$_baseUrl$path'));
+    request.headers.set('Content-Type', 'application/json');
+    request.write(jsonEncode(body));
+    final response = await request.close();
+    final responseBody = await response.transform(utf8.decoder).join();
+    if (response.statusCode != 200) {
+      throw HermesClientException('HTTP ${response.statusCode}: $responseBody', command: 'PUT $path');
     }
     return jsonDecode(responseBody) as Map<String, dynamic>;
   }
@@ -382,9 +409,80 @@ class BackendService extends ChangeNotifier implements HermesService {
   /// Direct HTTP POST for screens that need raw API access.
   Future<Map<String, dynamic>> httpPost(String path, Map<String, dynamic> body) => _post(path, body);
 
+  /// Direct HTTP PUT for screens that need raw API access.
+  Future<Map<String, dynamic>> httpPut(String path, Map<String, dynamic> body) => _put(path, body);
+
   /// Toggle gateway.
   Future<Map<String, dynamic>> gatewayToggle(String action) async {
     return await _post('/gateway/toggle', {'action': action});
+  }
+
+  // ── Skills ──────────────────────────────────────────────────────────
+
+  @override
+  Future<List<SkillEntry>> listSkills() async {
+    final data = await _get('/hermes/skills');
+    final list = data['skills'] as List? ?? [];
+    return list.map((s) => SkillEntry.fromJson(s as Map<String, dynamic>)).toList();
+  }
+
+  @override
+  Future<bool> toggleSkill(String name, {String action = 'toggle'}) async {
+    final data = await _post('/hermes/skills/$name/toggle', {'action': action});
+    return data['success'] == true;
+  }
+
+  // ── Memory ──────────────────────────────────────────────────────────
+
+  @override
+  Future<List<MemoryEntry>> listMemory() async {
+    final data = await _get('/memory');
+    final list = data['entries'] as List? ?? [];
+    return list.map((e) => MemoryEntry.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  @override
+  Future<MemoryEntry?> getMemory(String id) async {
+    final data = await _get('/memory/$id');
+    if (data['success'] == false) return null;
+    return MemoryEntry(key: id, content: data['content'] ?? '', id: id);
+  }
+
+  @override
+  Future<bool> deleteMemory(String id) async {
+    final data = await _deleteRequest('/memory/$id');
+    return data['success'] == true;
+  }
+
+  @override
+  Future<List<MemoryEntry>> searchMemory(String query) async {
+    final data = await _post('/memory/search', {'query': query});
+    final list = data['entries'] as List? ?? [];
+    return list.map((e) {
+      if (e is Map<String, dynamic>) return MemoryEntry.fromJson(e);
+      return MemoryEntry(key: e.toString(), content: e.toString());
+    }).toList();
+  }
+
+  // ── Files ───────────────────────────────────────────────────────────
+
+  @override
+  Future<FileListing> listFiles({String path = ''}) async {
+    final data = await _get('/files/list', {'path': path});
+    return FileListing.fromJson(data);
+  }
+
+  @override
+  Future<String?> readFile(String path) async {
+    final data = await _get('/files/read', {'path': path});
+    if (data['success'] == false) return null;
+    return data['content'] as String?;
+  }
+
+  @override
+  Future<bool> writeFile(String path, String content) async {
+    final data = await _put('/files/write', {'path': path, 'content': content});
+    return data['success'] == true;
   }
 
   @override
