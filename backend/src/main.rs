@@ -87,13 +87,20 @@ fn find_hermes_binary() -> Option<String> {
     }
 }
 
+/// Resolve the absolute path to the `hermes` binary using `find_hermes_binary()`.
+/// Falls back to "hermes" (PATH lookup) if not found.
+fn hermes_binary_path() -> String {
+    find_hermes_binary().unwrap_or_else(|| "hermes".to_string())
+}
+
 /// Run `hermes` CLI command (platform-agnostic)
 fn run_hermes(args: &[&str]) -> Result<(String, String, i32), String> {
-    let output = Command::new("hermes")
+    let binary = hermes_binary_path();
+    let output = Command::new(&binary)
         .args(args)
         .env("PAGER", "cat")
         .output()
-        .map_err(|e| format!("Failed to run hermes: {}", e))?;
+        .map_err(|e| format!("Failed to run hermes ({}): {}", binary, e))?;
 
     let stdout = String::from_utf8_lossy(&output.stdout).to_string();
     let stderr = String::from_utf8_lossy(&output.stderr).to_string();
@@ -806,7 +813,8 @@ fn handle_chat(req: ChatRequest, current_model_override: &str) -> ChatResponse {
 // ── HTTP Handlers ──────────────────────────────────────────────────────────
 
 async fn health(State(_state): State<Arc<AppState>>) -> Json<serde_json::Value> {
-    let hermes_check = Command::new("hermes")
+    let hermes_path = hermes_binary_path();
+    let hermes_check = Command::new(&hermes_path)
         .arg("--version")
         .output()
         .ok();
@@ -1053,7 +1061,7 @@ async fn chat_stream_handler(
                     args = vec!["--resume", sid, "-z", &message];
                 }
             }
-            match std::process::Command::new("hermes").args(&args).output() {
+            match std::process::Command::new(hermes_binary_path()).args(&args).output() {
                 Ok(output) if output.status.success() => {
                     let out = String::from_utf8_lossy(&output.stdout);
                     let evt = Event::default().data(serde_json::json!({"content": out}).to_string());
@@ -1324,7 +1332,7 @@ async fn gateway_toggle(
         }
         "stop" => {
             // Stop needs confirmation - pipe "y" via stdin
-            match std::process::Command::new("hermes")
+            match std::process::Command::new(hermes_binary_path())
                 .args(["gateway", "stop"])
                 .stdin(std::process::Stdio::piped())
                 .stdout(std::process::Stdio::piped())

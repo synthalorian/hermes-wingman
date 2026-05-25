@@ -370,6 +370,22 @@ class _ChatScreenState extends State<ChatScreen> {
             }
             try {
               final json = jsonDecode(data) as Map<String, dynamic>;
+              // Surface backend error events instead of silently dropping them
+              final error = json['error'] as String?;
+              if (error != null && error.isNotEmpty) {
+                buffer.write('\n[Error: $error]\n');
+                if (mounted) {
+                  final mgr = context.read<ChatManager>();
+                  final msgs = mgr.activeSession.messages;
+                  if (msgs.isNotEmpty) {
+                    mgr.updateLastMessage(sessionId, ChatMessage(
+                      text: buffer.toString().trim(),
+                      isUser: false,
+                    ));
+                  }
+                  _scrollToBottom();
+                }
+              }
               final content = json['content'] as String? ?? '';
               if (content.isNotEmpty) {
                 buffer.write(content);
