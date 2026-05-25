@@ -57,7 +57,18 @@ class BackendService extends ChangeNotifier implements HermesService {
         }
         await Future.delayed(const Duration(milliseconds: 500));
       }
-      _state = BackendConnectionState.failed;
+      // If the saved URL didn't work, try LAN discovery
+      debugPrint('[BackendService] Saved URL failed — scanning LAN...');
+      final discovered = await _discoverOnLAN();
+      if (discovered != null) {
+        _baseUrl = discovered;
+        if (await _checkHealth()) {
+          _state = BackendConnectionState.connected;
+          notifyListeners();
+          return true;
+        }
+      }
+_state = BackendConnectionState.failed;
       _lastError = 'Could not connect to $_baseUrl — is the backend running?';
       notifyListeners();
       return false;
@@ -84,7 +95,11 @@ class BackendService extends ChangeNotifier implements HermesService {
     try {
       _process = await Process.start(binary, [],
         runInShell: false,
-        environment: { 'HOME': Platform.environment['HOME'] ?? '/tmp' },
+        environment: {
+          'HOME': Platform.environment['HOME'] ?? '/tmp',
+          'PATH': Platform.environment['PATH'] ?? '/usr/local/bin:/usr/bin:/bin',
+          'BIND_ADDR': '0.0.0.0:9120',
+        },
       );
       _process!.stderr.listen((_) {});
 
@@ -248,6 +263,55 @@ class BackendService extends ChangeNotifier implements HermesService {
   }
 
   // ── HermesService Implementation ──────────────────────────────────────
+
+  /// Try to discover a Hermes Wingman backend on the local network.
+  /// Scans common private subnet IPs on port 9120.
+  Future<String?> _discoverOnLAN() async {
+    // Get our own IP to determine the subnet
+    try {
+      final interfaces = await NetworkInterface.list();
+      String? subnet;
+      for (final iface in interfaces) {
+        for (final addr in iface.addresses) {
+          if (addr.type == InternetAddressType.IPv4 && !addr.isLoopback) {
+            final parts = addr.address.split('.');
+            if (parts.length == 4) {
+              subnet = '${parts[0]}.${parts[1]}.${parts[2]}';
+              break;
+            }
+          }
+        }
+        if (subnet != null) break;
+      }
+      if (subnet == null) return null;
+
+      // Scan common hosts (1-20, 50-60, 100-110, 200-210) — covers most LANs
+      final hosts = [
+        for (var i = 1; i <= 20; i++) i,
+        for (var i = 50; i <= 60; i++) i,
+        for (var i = 100; i <= 110; i++) i,
+        for (var i = 200; i <= 210; i++) i,
+      ];
+      for (final host in hosts) {
+        try {
+          final url = 'http://$subnet.$host:9120';
+          final socket = await Socket.connect('$subnet.$host', 9120,
+            timeout: const Duration(milliseconds: 300));
+          socket.destroy();
+          // If connect succeeded, the port is open — check health
+          final request = await _client.getUrl(Uri.parse('$url/health'));
+          final response = await request.close();
+          if (response.statusCode == 200) {
+            debugPrint('[BackendService] Discovered backend at $url');
+            return url;
+          }
+        } catch (_) {
+          continue;
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
 
   @override
   Future<bool> isHermesAvailable() async {

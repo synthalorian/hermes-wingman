@@ -4,7 +4,7 @@ import 'app_theme.dart';
 /// Provider-based theme manager.
 /// Wraps theme selection and persists the choice.
 class ThemeManager extends ChangeNotifier {
-  String _currentThemeName = 'Synthwave \'84';
+  String _currentThemeName = 'Hermes';
   late AppColorScheme _currentScheme;
 
   ThemeManager() {

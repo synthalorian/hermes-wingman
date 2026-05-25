@@ -1,8 +1,12 @@
 import 'dart:io' show Platform;
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'theme/theme_manager.dart';
+import 'theme/hermes_splash.dart';
+import 'theme/animated_background.dart';
+import 'theme/page_transitions.dart';
 import 'services/hermes_service.dart';
 import 'services/hermes_api_client.dart';
 import 'services/hermes_client.dart';
@@ -38,8 +42,8 @@ final bool _isDesktop = !Platform.isAndroid && !Platform.isIOS;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  Provider.debugCheckInvalidValueType = null;
 
-  // Initialize tray only on desktop
   TrayService? trayService;
   if (_isDesktop) {
     trayService = TrayService();
@@ -48,10 +52,8 @@ void main() async {
     trayService.init().then((_) => debugPrint('System tray initialized'));
   }
 
-  // Start Rust backend or connect to remote
   final backend = BackendService();
 
-  // Mobile: load saved backend URL before starting
   if (!_isDesktop) {
     final settings = WingmanSettings();
     await Future.delayed(const Duration(milliseconds: 100));
@@ -61,8 +63,6 @@ void main() async {
     }
   }
 
-  // Mobile: quick connect attempt (1 second max), don't block the UI
-  // Desktop: block until backend is ready (8 seconds)
   final started = await backend.start(
     timeout: _isDesktop
         ? const Duration(seconds: 8)
@@ -73,7 +73,6 @@ void main() async {
     debugPrint('WARNING: Backend failed to start: ${backend.lastError}');
     debugPrint('Falling back to CLI-based HermesClient');
 
-    // On mobile, retry in background so the UI loads immediately
     if (!_isDesktop) {
       Future.delayed(const Duration(milliseconds: 100), () {
         backend.start(timeout: const Duration(seconds: 5)).then((ok) {
@@ -87,7 +86,6 @@ void main() async {
 
   final HermesService hermesService = started ? backend : HermesClient();
 
-  // Wire tray callbacks (desktop only)
   if (trayService != null) {
     trayService.onShow = () {};
     trayService.onQuit = () => backend.stop().then((_) => debugPrint('Backend stopped'));
@@ -107,19 +105,44 @@ void main() async {
   );
 }
 
-class HermesWingmanApp extends StatelessWidget {
+/// Root app shell with splash → main flow.
+class HermesWingmanApp extends StatefulWidget {
   final TrayService? trayService;
-
   const HermesWingmanApp({super.key, this.trayService});
 
   @override
+  State<HermesWingmanApp> createState() => _HermesWingmanAppState();
+}
+
+class _HermesWingmanAppState extends State<HermesWingmanApp> {
+  bool _showSplash = true;
+
+  void _onSplashComplete() {
+    setState(() => _showSplash = false);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (_showSplash) {
+      return MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          useMaterial3: true,
+          brightness: Brightness.dark,
+          colorSchemeSeed: const Color(0xFF4A6B5D),
+        ),
+        home: HermesSplashScreen(onComplete: _onSplashComplete),
+      );
+    }
+
     final themeManager = context.watch<ThemeManager>();
     return MaterialApp(
       title: 'Hermes Wingman',
       debugShowCheckedModeBanner: false,
-      theme: themeManager.themeData,
-      home: MainShell(trayService: trayService),
+      theme: themeManager.themeData.copyWith(
+        pageTransitionsTheme: hermeticTransitions,
+      ),
+      home: MainShell(trayService: widget.trayService),
     );
   }
 }
@@ -155,7 +178,6 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     _NavItem('Setup', Icons.rocket_outlined, '✨'),
   ];
 
-  /// Mobile shows a subset in the bottom nav bar
   static const _mobileNavItems = <_NavItem>[
     _NavItem('Dashboard', Icons.dashboard, ''),
     _NavItem('Chat', Icons.chat, ''),
@@ -166,7 +188,6 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     _NavItem('Settings', Icons.settings_outlined, ''),
   ];
 
-  /// Maps mobile nav indices (0-6) to screen indices (0-14)
   static const _mobileIndexMap = [0, 1, 2, 4, 5, 7, 10];
 
   late final List<Widget> _screens;
@@ -229,13 +250,23 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     final scheme = context.watch<ThemeManager>().currentScheme;
     final backendState = context.watch<BackendService>().state;
 
-    if (_isDesktop) {
-      return _buildDesktopLayout(scheme, backendState);
-    }
-    return _buildMobileLayout(scheme, backendState);
-  }
+    final body = _isDesktop
+        ? _buildDesktopLayout(scheme, backendState)
+        : _buildMobileLayout(scheme, backendState);
 
-  // ── Desktop Layout ───────────────────────────────────────────────────────
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: AnimatedBackground(
+            primaryColor: scheme.primary,
+            accentColor: scheme.accent,
+            baseColor: scheme.background,
+          ),
+        ),
+        body,
+      ],
+    );
+  }
 
   Widget _buildDesktopLayout(AppColorScheme scheme, BackendConnectionState state) {
     return PopScope(
@@ -246,72 +277,101 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
         }
       },
       child: Container(
-        color: scheme.scaffoldBackground,
+        color: scheme.scaffoldBackground.withAlpha(200),
         width: double.infinity,
         height: double.infinity,
         child: Row(
           children: [
-            // ── Sidebar ──────────────────────────────────────────────
-            Container(
-              width: 68,
-              decoration: BoxDecoration(
-                color: scheme.appBarBackground,
-                border: Border(
-                  right: BorderSide(color: scheme.borderDim, width: 0.5),
-                ),
+            ClipRRect(
+              borderRadius: const BorderRadius.only(
+                topRight: Radius.circular(12),
+                bottomRight: Radius.circular(12),
               ),
-              child: Column(
-                children: [
-                  const SizedBox(height: 12),
-                  const WingmanIcon(size: 40),
-                  const SizedBox(height: 12),
-                  _BackendStatusDot(scheme: scheme, state: state),
-                  const SizedBox(height: 12),
-                  Expanded(
+              child: BackdropFilter(
+                filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                child: Material(
+                  type: MaterialType.transparency,
+                  child: Container(
+                    width: 68,
+                    decoration: BoxDecoration(
+                      color: scheme.appBarBackground.withAlpha(180),
+                      border: Border(
+                        right: BorderSide(color: scheme.borderDim.withAlpha(50), width: 0.5),
+                      ),
+                    ),
                     child: Column(
-                      children: List.generate(_navItems.length, (i) {
-                        final item = _navItems[i];
-                        final selected = i == _selectedIndex;
-                        return _SidebarButton(
-                          icon: item.icon,
-                          label: item.label,
-                          badge: item.badge,
-                          selected: selected,
-                          color: selected ? scheme.primary : scheme.textMuted,
-                          bgColor: selected ? scheme.primary.withValues(alpha: 0.08) : Colors.transparent,
-                          onTap: () => setState(() => _selectedIndex = i),
-                        );
-                      }),
+                      children: [
+                        const SizedBox(height: 12),
+                        _AnimatedSidebarIcon(scheme: scheme),
+                        const SizedBox(height: 12),
+                        _BackendStatusDot(scheme: scheme, state: state),
+                        const SizedBox(height: 12),
+                        Expanded(
+                          child: Column(
+                            children: List.generate(_navItems.length, (i) {
+                              final item = _navItems[i];
+                              final selected = i == _selectedIndex;
+                              return _SidebarButton(
+                                icon: item.icon,
+                                label: item.label,
+                                badge: item.badge,
+                                selected: selected,
+                                color: selected ? scheme.primary : scheme.textMuted,
+                                bgColor: selected ? scheme.primary.withAlpha(18) : Colors.transparent,
+                                onTap: () => setState(() => _selectedIndex = i),
+                              );
+                            }),
+                          ),
+                        ),
+                        _ThemeSwitcherButton(),
+                        const SizedBox(height: 12),
+                      ],
                     ),
                   ),
-                  _ThemeSwitcherButton(),
-                  const SizedBox(height: 12),
-                ],
+                ),
               ),
             ),
-            // ── Content ─────────────────────────────────────────────
-            Expanded(child: _screens[_selectedIndex]),
+            Expanded(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                switchInCurve: Curves.easeOut,
+                switchOutCurve: Curves.easeIn,
+                transitionBuilder: (child, anim) {
+                  return SlideTransition(
+                    position: Tween<Offset>(
+                      begin: const Offset(0.04, 0),
+                      end: Offset.zero,
+                    ).animate(CurvedAnimation(
+                      parent: anim,
+                      curve: Curves.easeOutCubic,
+                    )),
+                    child: FadeTransition(opacity: anim, child: child),
+                  );
+                },
+                child: KeyedSubtree(
+                  key: ValueKey(_selectedIndex),
+                  child: _screens[_selectedIndex],
+                ),
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  // ── Mobile Layout ─────────────────────────────────────────────────────────
-
   Widget _buildMobileLayout(AppColorScheme scheme, BackendConnectionState state) {
-    // Find the best matching mobile index
     final currentMobileIdx = _mobileIndexMap.indexOf(_selectedIndex);
     final effectiveIdx = currentMobileIdx >= 0 ? currentMobileIdx : 0;
 
     return Scaffold(
-      backgroundColor: scheme.scaffoldBackground,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
-        backgroundColor: scheme.appBarBackground,
+        backgroundColor: scheme.appBarBackground.withAlpha(200),
         elevation: 0,
         title: Row(
           children: [
-            const WingmanIcon(size: 22),
+            _AnimatedWingmanMark(scheme: scheme, size: 22),
             const SizedBox(width: 8),
             Text('Hermes Wingman', style: TextStyle(color: scheme.text, fontSize: 14)),
             const Spacer(),
@@ -319,30 +379,136 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
           ],
         ),
       ),
-      body: IndexedStack(
-        index: effectiveIdx,
-        children: _mobileIndexMap.map((i) => _screens[i]).toList(),
-      ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          border: Border(top: BorderSide(color: scheme.borderDim, width: 0.5)),
-        ),
-        child: BottomNavigationBar(
-          backgroundColor: scheme.appBarBackground,
-          selectedItemColor: scheme.primary,
-          unselectedItemColor: scheme.textMuted,
-          type: BottomNavigationBarType.fixed,
-          currentIndex: effectiveIdx,
-          onTap: (i) => setState(() => _selectedIndex = _mobileIndexMap[i]),
-          items: _mobileNavItems.map((item) {
-            return BottomNavigationBarItem(
-              icon: Icon(item.icon, size: 20),
-              activeIcon: Icon(item.icon, size: 22),
-              label: item.label,
-            );
-          }).toList(),
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 180),
+        transitionBuilder: (child, anim) {
+          return FadeTransition(opacity: anim, child: child);
+        },
+        child: KeyedSubtree(
+          key: ValueKey(effectiveIdx),
+          child: IndexedStack(
+            index: effectiveIdx,
+            children: _mobileIndexMap.map((i) => _screens[i]).toList(),
+          ),
         ),
       ),
+      bottomNavigationBar: ClipRRect(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+        child: BackdropFilter(
+          filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          child: Material(
+            type: MaterialType.transparency,
+            child: BottomNavigationBar(
+            backgroundColor: scheme.bottomNavBackground.withAlpha(200),
+            selectedItemColor: scheme.primary,
+            unselectedItemColor: scheme.textMuted,
+            type: BottomNavigationBarType.fixed,
+            currentIndex: effectiveIdx,
+            onTap: (i) => setState(() => _selectedIndex = _mobileIndexMap[i]),
+            items: _mobileNavItems.map((item) {
+              return BottomNavigationBarItem(
+                icon: Icon(item.icon, size: 20),
+                activeIcon: Icon(item.icon, size: 22),
+                label: item.label,
+              );
+}).toList(),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+}
+
+// ── Animated Sidebar Icon ──────────────────────────────────────────────────
+
+class _AnimatedSidebarIcon extends StatefulWidget {
+  final AppColorScheme scheme;
+  const _AnimatedSidebarIcon({required this.scheme});
+
+  @override
+  State<_AnimatedSidebarIcon> createState() => _AnimatedSidebarIconState();
+}
+
+class _AnimatedSidebarIconState extends State<_AnimatedSidebarIcon>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _pulseController;
+  late Animation<double> _pulse;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 3),
+    )..repeat(reverse: true);
+    _pulse = Tween<double>(begin: 0.92, end: 1.0).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOutSine),
+    );
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _pulseController,
+      builder: (context, child) {
+        return Transform.scale(
+          scale: _pulse.value,
+          child: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: [
+                BoxShadow(
+                  color: widget.scheme.primary.withAlpha(20),
+                  blurRadius: 8,
+                  spreadRadius: 1,
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: BackdropFilter(
+                filter: ui.ImageFilter.blur(sigmaX: 6, sigmaY: 6),
+                child: Material(
+                  type: MaterialType.transparency,
+                  child: WingmanIcon(size: 40, showBackground: false),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _AnimatedWingmanMark extends StatelessWidget {
+  final AppColorScheme scheme;
+  final double size;
+  const _AnimatedWingmanMark({required this.scheme, this.size = 22});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size, height: size,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(4),
+        boxShadow: [
+          BoxShadow(
+            color: scheme.primary.withAlpha(15),
+            blurRadius: 4,
+          ),
+        ],
+      ),
+      child: WingmanIcon(size: size, showBackground: false),
     );
   }
 }
@@ -393,7 +559,7 @@ class _BackendStatusDot extends StatelessWidget {
           color: color,
           shape: BoxShape.circle,
           boxShadow: [
-            BoxShadow(color: color.withValues(alpha: 0.5), blurRadius: 4, spreadRadius: 1),
+            BoxShadow(color: color.withAlpha(153), blurRadius: 6, spreadRadius: 1),
           ],
         ),
       ),
@@ -473,9 +639,9 @@ class _ThemeSwitcherButton extends StatelessWidget {
       elevation: 8,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(10),
-        side: BorderSide(color: scheme.borderDim, width: 0.5),
+        side: BorderSide(color: scheme.borderDim.withAlpha(60), width: 0.5),
       ),
-      color: scheme.surface,
+      color: scheme.surface.withAlpha(230),
       onSelected: (name) => themeManager.setTheme(name),
       itemBuilder: (context) => themeManager.availableThemes.map((name) {
         final current = name == themeManager.currentThemeName;
@@ -500,9 +666,9 @@ class _ThemeSwitcherButton extends StatelessWidget {
           width: 52, height: 40,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: scheme.borderDim.withValues(alpha: 0.5), width: 0.5),
+            border: Border.all(color: scheme.borderDim.withAlpha(40), width: 0.5),
           ),
-          child: Icon(Icons.palette_outlined, size: 18, color: scheme.textDim),
+          child: Icon(Icons.palette_outlined, size: 18, color: scheme.textMuted),
         ),
       ),
     );

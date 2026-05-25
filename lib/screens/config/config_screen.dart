@@ -24,12 +24,29 @@ class _ConfigScreenState extends State<ConfigScreen> {
   bool _saving = false;
   String? _error;
   String? _saveError;
+  List<String> _localIPs = [];
 
   @override
   void initState() {
     super.initState();
     _controller = TextEditingController();
     _loadConfig();
+    _discoverIPs();
+  }
+
+  Future<void> _discoverIPs() async {
+    try {
+      final interfaces = await NetworkInterface.list();
+      final ips = <String>[];
+      for (final iface in interfaces) {
+        for (final addr in iface.addresses) {
+          if (addr.type == InternetAddressType.IPv4 && !addr.isLoopback) {
+            ips.add(addr.address);
+          }
+        }
+      }
+      if (mounted) setState(() => _localIPs = ips);
+    } catch (_) {}
   }
 
   @override
@@ -197,6 +214,18 @@ class _ConfigScreenState extends State<ConfigScreen> {
             _buildThemeSection(scheme),
           ],
 
+          // Provider management (desktop + mobile)
+          if (!_isMobile) ...[
+            const SizedBox(height: 8),
+            _buildProviderSection(scheme),
+          ],
+
+          // Network sharing (desktop only)
+          if (!_isMobile) ...[
+            const SizedBox(height: 8),
+            _buildNetworkSection(scheme),
+          ],
+
           const SizedBox(height: 8),
           // Summary bar
           Container(
@@ -340,6 +369,333 @@ class _ConfigScreenState extends State<ConfigScreen> {
     );
   }
 
+  // ── Provider Management Section ────────────────────────────────────────
+
+  Widget _buildProviderSection(AppColorScheme scheme) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: scheme.surfaceAlt,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: scheme.primary.withValues(alpha: 0.3), width: 0.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.cloud_outlined, size: 14, color: scheme.primary),
+              const SizedBox(width: 8),
+              Text('Providers', style: TextStyle(color: scheme.text, fontSize: 12, fontWeight: FontWeight.w500)),
+              const Spacer(),
+              Material(
+                color: scheme.primary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(6),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(6),
+                  onTap: () => _showAddProviderDialog(scheme),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.add, size: 12, color: scheme.primary),
+                        const SizedBox(width: 4),
+                        Text('Add', style: TextStyle(color: scheme.primary, fontSize: 10, fontWeight: FontWeight.w600)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Add API providers (OpenAI, Anthropic, xAI, etc.) to use their models.',
+            style: TextStyle(color: scheme.textMuted, fontSize: 10, height: 1.4),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showAddProviderDialog(AppColorScheme scheme) async {
+    final nameCtrl = TextEditingController();
+    final keyCtrl = TextEditingController();
+    final urlCtrl = TextEditingController(text: 'https://api.openai.com/v1');
+    final modelCtrl = TextEditingController(text: 'gpt-4o');
+    final isOAuth = ValueNotifier<bool>(false);
+
+    await showDialog(
+      context: context,
+      builder: (ctx) {
+        return ValueListenableBuilder<bool>(
+          valueListenable: isOAuth,
+          builder: (ctx, oauth, _) {
+            return AlertDialog(
+              backgroundColor: scheme.surface.withAlpha(235),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(color: scheme.borderDim.withAlpha(60), width: 0.5),
+              ),
+              title: Text('Add Provider', style: TextStyle(color: scheme.text, fontSize: 15, fontWeight: FontWeight.w600)),
+              content: SizedBox(
+                width: 380,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _ProviderField(scheme: scheme, label: 'Provider Name', hint: 'e.g. openai, anthropic, xai', ctrl: nameCtrl),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Text('OAuth (e.g. Nous, xAI)', style: TextStyle(color: scheme.textDim, fontSize: 11)),
+                          const Spacer(),
+                          SizedBox(
+                            width: 36, height: 20,
+                            child: Switch(
+                              value: oauth,
+                              onChanged: (v) => isOAuth.value = v,
+                              activeColor: scheme.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (!oauth) ...[
+                        const SizedBox(height: 10),
+                        _ProviderField(scheme: scheme, label: 'API Key', hint: 'sk-...', ctrl: keyCtrl, obscure: true),
+                        const SizedBox(height: 10),
+                        _ProviderField(scheme: scheme, label: 'Base URL', hint: 'https://api.openai.com/v1', ctrl: urlCtrl),
+                      ],
+                      const SizedBox(height: 10),
+                      _ProviderField(scheme: scheme, label: 'Default Model', hint: 'gpt-4o', ctrl: modelCtrl),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: Text('Cancel', style: TextStyle(color: scheme.textDim)),
+                ),
+                TextButton(
+                  onPressed: () async {
+                    final name = nameCtrl.text.trim();
+                    if (name.isEmpty) return;
+                    try {
+                      final backend = context.read<BackendService>();
+                      if (oauth) {
+                        await backend.httpPost('/config/update', {
+                          'updates': {
+                            'providers.$name.type': 'oauth',
+                            'providers.$name.model': modelCtrl.text.trim(),
+                          }
+                        });
+                      } else {
+                        await backend.httpPost('/config/update', {
+                          'updates': {
+                            'providers.$name.api_key': keyCtrl.text.trim(),
+                            'providers.$name.base_url': urlCtrl.text.trim(),
+                            'providers.$name.model': modelCtrl.text.trim(),
+                          }
+                        });
+                      }
+                      if (ctx.mounted) Navigator.pop(ctx);
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Provider "$name" added', style: TextStyle(color: scheme.text, fontSize: 12)),
+                            backgroundColor: scheme.surface,
+                            duration: const Duration(seconds: 2),
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Error: $e', style: TextStyle(color: scheme.error, fontSize: 11)),
+                            backgroundColor: scheme.surface,
+                          ),
+                        );
+                      }
+                    }
+                  },
+                  child: Text('Add Provider', style: TextStyle(color: scheme.primary, fontWeight: FontWeight.w600)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+    nameCtrl.dispose();
+    keyCtrl.dispose();
+    urlCtrl.dispose();
+    modelCtrl.dispose();
+  }
+
+  // ── Network Sharing Section ─────────────────────────────────────────────
+
+  Widget _buildNetworkSection(AppColorScheme scheme) {
+    final localIPs = _getLocalIPs();
+    final primaryIP = localIPs.isNotEmpty ? localIPs.first : '—';
+    final connString = '$primaryIP:9120';
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: scheme.surfaceAlt,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: scheme.accent.withValues(alpha: 0.3), width: 0.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.wifi_tethering, size: 14, color: scheme.accent),
+              const SizedBox(width: 8),
+              Text('Network Share', style: TextStyle(color: scheme.text, fontSize: 12, fontWeight: FontWeight.w500)),
+              const Spacer(),
+              if (localIPs.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: scheme.success.withAlpha(25),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: scheme.success.withAlpha(60), width: 0.5),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(width: 5, height: 5, decoration: BoxDecoration(color: scheme.success, shape: BoxShape.circle, boxShadow: [BoxShadow(color: scheme.success.withAlpha(128), blurRadius: 3)])),
+                      const SizedBox(width: 4),
+                      Text('Online', style: TextStyle(color: scheme.success, fontSize: 9, fontWeight: FontWeight.w600, letterSpacing: 1)),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Connect your phone to the desktop backend:',
+            style: TextStyle(color: scheme.textMuted, fontSize: 10, height: 1.4),
+          ),
+          const SizedBox(height: 8),
+          // Connection info
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: scheme.background,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: scheme.borderDim.withAlpha(60), width: 0.5),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.link, size: 14, color: scheme.accent),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    connString,
+                    style: TextStyle(color: scheme.text, fontSize: 13, fontFamily: 'monospace', fontWeight: FontWeight.w600),
+                  ),
+                ),
+                Material(
+                  color: scheme.accent.withAlpha(25),
+                  borderRadius: BorderRadius.circular(6),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(6),
+                    onTap: () {
+                      // Copy to clipboard
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.copy, size: 12, color: scheme.accent),
+                          const SizedBox(width: 4),
+                          Text('Copy', style: TextStyle(color: scheme.accent, fontSize: 10, fontWeight: FontWeight.w600)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (localIPs.length > 1) ...[
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 6,
+              children: localIPs.map((ip) {
+                final isPrimary = ip == primaryIP;
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: isPrimary ? scheme.primary.withAlpha(15) : Colors.transparent,
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: isPrimary ? scheme.primary.withAlpha(40) : scheme.borderDim.withAlpha(30), width: 0.5),
+                  ),
+                  child: Text(ip, style: TextStyle(color: isPrimary ? scheme.primary : scheme.textMuted, fontSize: 9, fontFamily: 'monospace')),
+                );
+              }).toList(),
+            ),
+          ],
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Icon(Icons.info_outline, size: 10, color: scheme.textMuted),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  'On your phone, open Config → Backend Connection → enter this IP and port 9120',
+                  style: TextStyle(color: scheme.textMuted, fontSize: 9, height: 1.4),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Icon(Icons.warning_amber_outlined, size: 10, color: scheme.warning),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  'The backend must bind to 0.0.0.0 to accept network connections. Run:',
+                  style: TextStyle(color: scheme.warning, fontSize: 9, height: 1.4),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: scheme.background,
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: scheme.borderDim.withAlpha(40), width: 0.5),
+            ),
+            child: Text(
+              'BIND_ADDR=0.0.0.0:9120 hermes-wingman-backend',
+              style: TextStyle(color: scheme.accent, fontSize: 10, fontFamily: 'monospace'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<String> _getLocalIPs() {
+    return _localIPs;
+  }
+
   // ── Theme Picker (mobile) ───────────────────────────────────────────────
 
   Widget _buildThemeSection(AppColorScheme scheme) {
@@ -474,6 +830,54 @@ class _YamlLine extends StatelessWidget {
             Text(indentStr + content + (comment.isNotEmpty ? ' $comment' : ''), style: TextStyle(color: scheme.textDim, fontSize: 11, fontFamily: 'monospace', height: 1.4)),
         ],
       ),
+    );
+  }
+}
+
+// ── Provider Field Widget ────────────────────────────────────────────────
+
+class _ProviderField extends StatelessWidget {
+  final AppColorScheme scheme;
+  final String label;
+  final String hint;
+  final TextEditingController ctrl;
+  final bool obscure;
+
+  const _ProviderField({
+    required this.scheme,
+    required this.label,
+    required this.hint,
+    required this.ctrl,
+    this.obscure = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: TextStyle(color: scheme.textDim, fontSize: 10, fontWeight: FontWeight.w500)),
+        const SizedBox(height: 4),
+        Container(
+          decoration: BoxDecoration(
+            color: scheme.background,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: scheme.borderDim.withAlpha(60), width: 0.5),
+          ),
+          child: TextField(
+            controller: ctrl,
+            obscureText: obscure,
+            style: TextStyle(color: scheme.text, fontSize: 12, fontFamily: 'monospace'),
+            decoration: InputDecoration(
+              hintText: hint,
+              hintStyle: TextStyle(color: scheme.textMuted.withAlpha(120), fontSize: 11, fontFamily: 'monospace'),
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              isDense: true,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

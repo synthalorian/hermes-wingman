@@ -18,12 +18,50 @@ class SetupWizardScreen extends StatefulWidget {
 }
 
 class _SetupWizardScreenState extends State<SetupWizardScreen> {
+  int _step = 0;
+  bool _hermesInstalled = false;
+  String _hermesVersion = '';
+  bool _checking = true;
+  bool _installing = false;
+  String? _installError;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkStatus();
+  }
+
+  Future<void> _checkStatus() async {
+    setState(() => _checking = true);
+    try {
+      final backend = context.read<BackendService>();
+      final health = await backend.httpGet('/health');
+      _hermesInstalled = health['hermes_installed'] == true;
+      _hermesVersion = health['hermes_version']?.toString() ?? '';
+    } catch (_) {}
+    if (mounted) setState(() => _checking = false);
+  }
+
+  Future<void> _installHermes() async {
+    setState(() {
+      _installing = true;
+      _installError = null;
+    });
+    try {
+      final backend = context.read<BackendService>();
+      await backend.httpPost('/setup/install', {'method': 'pip'});
+      await _checkStatus();
+    } catch (e) {
+      if (mounted) setState(() => _installError = e.toString());
+    }
+    if (mounted) setState(() => _installing = false);
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = context.watch<ThemeManager>().currentScheme;
     final backendState = context.watch<BackendService>().state;
     final settings = context.watch<WingmanSettings>();
-    final themeManager = context.watch<ThemeManager>();
 
     return Scaffold(
       backgroundColor: scheme.scaffoldBackground,
@@ -32,340 +70,440 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
           children: [
             Icon(Icons.rocket_launch, size: 18, color: scheme.primary),
             const SizedBox(width: 8),
-            Text('Setup', style: TextStyle(color: scheme.primary, fontWeight: FontWeight.w600)),
+            Text('Setup Hermes', style: TextStyle(color: scheme.primary, fontWeight: FontWeight.w600)),
           ],
         ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Connection Card ────────────────────────────────────────
-            _SectionCard(
-              scheme: scheme,
-              icon: Icons.wifi_tethering,
-              iconColor: scheme.secondary,
-              title: 'Backend Connection',
-              subtitle: backendState == BackendConnectionState.connected
-                  ? 'Connected to ${settings.backendHost}:${settings.backendPort}'
-                  : backendState == BackendConnectionState.initializing
-                      ? 'Connecting...'
-                      : 'Not connected',
-              trailing: _BackendStatusBadge(scheme: scheme, state: backendState),
-              body: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (backendState == BackendConnectionState.failed ||
-                      backendState == BackendConnectionState.notFound)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: scheme.warning.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: scheme.warning.withValues(alpha: 0.3)),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.info_outline, size: 14, color: scheme.warning),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'Set up a backend server on your desktop, then connect from here.',
-                                style: TextStyle(color: scheme.warning, fontSize: 11),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  Text(
-                    'Host: ${settings.backendHost}',
-                    style: TextStyle(color: scheme.textDim, fontSize: 11, fontFamily: 'monospace'),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Port: ${settings.backendPort}',
-                    style: TextStyle(color: scheme.textDim, fontSize: 11, fontFamily: 'monospace'),
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: scheme.primary,
-                        side: BorderSide(color: scheme.primary.withValues(alpha: 0.4)),
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                      ),
-                      onPressed: () async {
-                        final changed = await WingmanSettings.showConnectionDialog(context);
-                        if (changed == true && context.mounted) {
-                          final backend = context.read<BackendService>();
-                          backend.setBaseUrl(settings.backendHost, settings.backendPort);
-                          await backend.reconnect();
-                        }
-                      },
-                      icon: const Icon(Icons.edit_outlined, size: 16),
-                      label: const Text('Change Backend', style: TextStyle(fontSize: 12)),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // ── Theme Card ─────────────────────────────────────────────
-            _SectionCard(
-              scheme: scheme,
-              icon: Icons.palette_outlined,
-              iconColor: scheme.accent,
-              title: 'Theme',
-              subtitle: 'Current: ${themeManager.currentThemeName}',
-              body: Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: themeManager.availableThemes.map((name) {
-                  final isCurrent = name == themeManager.currentThemeName;
-                  return GestureDetector(
-                    onTap: () => themeManager.setTheme(name),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: isCurrent
-                            ? scheme.primary.withValues(alpha: 0.12)
-                            : scheme.surfaceAlt,
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(
-                          color: isCurrent ? scheme.primary : scheme.borderDim,
-                          width: isCurrent ? 1.5 : 0.5,
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            isCurrent ? Icons.brightness_1 : Icons.circle_outlined,
-                            size: 10,
-                            color: isCurrent ? scheme.primary : scheme.textMuted,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            name,
-                            style: TextStyle(
-                              color: isCurrent ? scheme.primary : scheme.text,
-                              fontSize: 11,
-                              fontWeight: isCurrent ? FontWeight.w600 : FontWeight.w400,
-                            ),
-                          ),
-                          if (isCurrent) ...[
-                            const SizedBox(width: 4),
-                            Icon(Icons.check, size: 12, color: scheme.primary),
-                          ],
-                        ],
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // ── Status Card ────────────────────────────────────────────
-            if (_isMobile) ...[
-              _SectionCard(
-                scheme: scheme,
-                icon: Icons.info_outline,
-                iconColor: scheme.textDim,
-                title: 'How It Works',
-                subtitle: 'Mobile connects to a desktop backend',
-                body: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _infoRow(scheme, '1', 'Install and run the backend on your desktop'),
-                    const SizedBox(height: 6),
-                    _infoRow(scheme, '2', 'Note your desktop IP address on your LAN'),
-                    const SizedBox(height: 6),
-                    _infoRow(scheme, '3', 'Enter the IP and port in "Change Backend" above'),
-                    const SizedBox(height: 6),
-                    _infoRow(scheme, '4', 'The app connects and all features work remotely'),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Default port: 9120',
-                      style: TextStyle(color: scheme.textMuted, fontSize: 10, fontFamily: 'monospace'),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+            // Step indicator
+            _buildStepIndicator(scheme),
+            const SizedBox(height: 24),
+            // Current step content
+            _buildStepContent(scheme, settings, backendState),
           ],
         ),
       ),
     );
   }
 
-  Widget _infoRow(AppColorScheme scheme, String num, String text) {
+  Widget _buildStepIndicator(AppColorScheme scheme) {
+    final steps = ['Setup', 'Provider', 'Model', 'Done'];
     return Row(
+      children: List.generate(steps.length, (i) {
+        final isActive = i == _step;
+        final isDone = i < _step;
+        return Expanded(
+          child: Column(
+            children: [
+              Container(
+                width: 28, height: 28,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isDone
+                      ? scheme.success
+                      : isActive
+                          ? scheme.primary
+                          : scheme.surfaceAlt,
+                ),
+                child: Center(
+                  child: isDone
+                      ? Icon(Icons.check, size: 14, color: scheme.surface)
+                      : Text('${i + 1}', style: TextStyle(color: isActive ? scheme.surface : scheme.textMuted, fontSize: 12, fontWeight: FontWeight.w600)),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(steps[i], style: TextStyle(color: isActive ? scheme.text : scheme.textMuted, fontSize: 9, fontWeight: isActive ? FontWeight.w600 : FontWeight.w400)),
+            ],
+          ),
+        );
+      }),
+    );
+  }
+
+  Widget _buildStepContent(AppColorScheme scheme, WingmanSettings settings, BackendConnectionState backendState) {
+    switch (_step) {
+      case 0: return _stepSetup(scheme);
+      case 1: return _stepProvider(scheme);
+      case 2: return _stepModel(scheme);
+      case 3: return _stepDone(scheme, settings, backendState);
+      default: return const SizedBox();
+    }
+  }
+
+  // ── Step 1: Hermes Setup ────────────────────────────────────────────
+
+  Widget _stepSetup(AppColorScheme scheme) {
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        Text('1. Install Hermes Agent', style: TextStyle(color: scheme.text, fontSize: 16, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 6),
+        Text('Hermes Agent is the AI engine that powers everything. We need to install it before we can continue.', style: TextStyle(color: scheme.textDim, fontSize: 12, height: 1.5)),
+        const SizedBox(height: 20),
         Container(
-          width: 18, height: 18,
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: scheme.primary.withValues(alpha: 0.12),
-            shape: BoxShape.circle,
+            color: scheme.cardBackground,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: scheme.borderDim, width: 0.5),
           ),
-          child: Center(
-            child: Text(
-              num,
-              style: TextStyle(
-                color: scheme.primary,
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
+          child: Column(
+            children: [
+              Icon(
+                _checking ? Icons.hourglass_empty : (_hermesInstalled ? Icons.check_circle : Icons.error_outline),
+                size: 40,
+                color: _checking ? scheme.textMuted : (_hermesInstalled ? scheme.success : scheme.error),
               ),
-            ),
+              const SizedBox(height: 12),
+              if (_checking)
+                Text('Checking...', style: TextStyle(color: scheme.textDim, fontSize: 14))
+              else if (_hermesInstalled) ...[
+                Text('Hermes Agent is installed!', style: TextStyle(color: scheme.success, fontSize: 14, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 4),
+                Text(_hermesVersion, style: TextStyle(color: scheme.textMuted, fontSize: 10, fontFamily: 'monospace'), textAlign: TextAlign.center),
+              ] else ...[
+                Text('Hermes Agent is not installed', style: TextStyle(color: scheme.textDim, fontSize: 14)),
+                const SizedBox(height: 4),
+                Text('We will install it for you automatically.', style: TextStyle(color: scheme.textMuted, fontSize: 11)),
+              ],
+              if (_installError != null) ...[
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(color: scheme.error.withAlpha(15), borderRadius: BorderRadius.circular(4)),
+                  child: Text(_installError!, style: TextStyle(color: scheme.error, fontSize: 10, fontFamily: 'monospace')),
+                ),
+              ],
+            ],
           ),
         ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            text,
-            style: TextStyle(color: scheme.textDim, fontSize: 12),
+        const SizedBox(height: 20),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: scheme.primary,
+              side: BorderSide(color: scheme.primary.withAlpha(80)),
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: _checking || _installing ? null : (_hermesInstalled ? () => setState(() => _step = 1) : _installHermes),
+            child: Text(
+              _installing ? 'Installing...' : (_hermesInstalled ? 'Continue →' : 'Install Hermes Agent'),
+              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+            ),
           ),
         ),
       ],
     );
   }
-}
 
-// ── Shared Components ─────────────────────────────────────────────────────
+  // ── Step 2: Add Provider ────────────────────────────────────────────
 
-class _SectionCard extends StatelessWidget {
-  final AppColorScheme scheme;
-  final IconData icon;
-  final Color iconColor;
-  final String title;
-  final String subtitle;
-  final Widget? trailing;
-  final Widget body;
+  Widget _stepProvider(AppColorScheme scheme) {
+    final providers = [
+      ['Nous', 'nous', 'Nous Research (OAuth) — recommended for Hermes', true],
+      ['OpenAI', 'openai', 'OpenAI API key — gpt-4o, o3, etc.', false],
+      ['Anthropic', 'anthropic', 'Anthropic API key — Claude models', false],
+      ['xAI', 'xai', 'xAI API key — Grok models', false],
+      ['Google', 'google', 'Google AI API key — Gemini models', false],
+      ['Skip', 'skip', 'Set up a provider later', false],
+    ];
 
-  const _SectionCard({
-    required this.scheme,
-    required this.icon,
-    required this.iconColor,
-    required this.title,
-    required this.subtitle,
-    this.trailing,
-    required this.body,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: scheme.cardBackground,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: scheme.borderDim, width: 0.5),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 32, height: 32,
-                decoration: BoxDecoration(
-                  color: iconColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(icon, size: 16, color: iconColor),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: TextStyle(
-                        color: scheme.text,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('2. Add an AI Provider', style: TextStyle(color: scheme.text, fontSize: 16, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 6),
+        Text('Choose a provider to power your Hermes Agent. You can add more later.', style: TextStyle(color: scheme.textDim, fontSize: 12, height: 1.5)),
+        const SizedBox(height: 16),
+        ...providers.map((p) {
+          final name = p[0] as String;
+          final key = p[1] as String;
+          final desc = p[2] as String;
+          final oauth = p[3] as bool;
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Material(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(8),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(8),
+                onTap: () => _handleProviderSelect(scheme, key, name, oauth),
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: scheme.cardBackground,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: scheme.borderDim.withAlpha(50), width: 0.5),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 36, height: 36,
+                        decoration: BoxDecoration(color: scheme.primary.withAlpha(15), borderRadius: BorderRadius.circular(8)),
+                        child: Center(child: Text(name[0], style: TextStyle(color: scheme.primary, fontSize: 16, fontWeight: FontWeight.w700))),
                       ),
-                    ),
-                    Text(
-                      subtitle,
-                      style: TextStyle(
-                        color: scheme.textMuted,
-                        fontSize: 10,
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(name, style: TextStyle(color: scheme.text, fontSize: 13, fontWeight: FontWeight.w600)),
+                            const SizedBox(height: 2),
+                            Text(desc, style: TextStyle(color: scheme.textMuted, fontSize: 10, height: 1.3)),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                      Icon(Icons.chevron_right, size: 18, color: scheme.textMuted),
+                    ],
+                  ),
                 ),
               ),
-              if (trailing != null) trailing!,
-            ],
-          ),
-          const SizedBox(height: 14),
-          body,
-        ],
-      ),
+            ),
+          );
+        }),
+      ],
     );
   }
-}
 
-class _BackendStatusBadge extends StatelessWidget {
-  final AppColorScheme scheme;
-  final BackendConnectionState state;
-
-  const _BackendStatusBadge({required this.scheme, required this.state});
-
-  @override
-  Widget build(BuildContext context) {
-    Color color = scheme.error;
-    String label = 'OFFLINE';
-    switch (state) {
-      case BackendConnectionState.connected:
-        color = scheme.success;
-        label = 'LIVE';
-      case BackendConnectionState.initializing:
-        color = scheme.warning;
-        label = '...';
-      case BackendConnectionState.failed:
-      case BackendConnectionState.notFound:
-        color = scheme.error;
-        label = 'OFFLINE';
+  Future<void> _handleProviderSelect(AppColorScheme scheme, String key, String name, bool oauth) async {
+    if (key == 'skip') {
+      setState(() => _step = 3);
+      return;
     }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 6, height: 6,
-            decoration: BoxDecoration(
-              color: color,
-              shape: BoxShape.circle,
+    if (oauth) {
+      // OAuth providers: launch auth flow via backend
+      try {
+        final backend = context.read<BackendService>();
+        final result = await backend.httpPost('/config/update', {
+          'updates': {
+            'providers.$key.type': 'oauth',
+            'providers.$key.model': key == 'nous' ? 'nous/main' : '$key/grok-2',
+          }
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('$name provider added! Run: hermes login $key to authenticate', style: TextStyle(color: scheme.text, fontSize: 11)),
+            backgroundColor: scheme.surface,
+            duration: const Duration(seconds: 4),
+          ));
+          setState(() => _step = 2);
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('Error: $e', style: TextStyle(color: scheme.error, fontSize: 11)),
+            backgroundColor: scheme.surface,
+          ));
+        }
+      }
+    } else {
+      // API key providers: show a dialog to enter the key
+      final keyCtrl = TextEditingController();
+      final modelCtrl = TextEditingController(
+        text: key == 'openai' ? 'gpt-4o' : key == 'anthropic' ? 'claude-sonnet-4' : key == 'xai' ? 'grok-3' : 'gemini-2.0-flash',
+      );
+      await showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: scheme.surface.withAlpha(235),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: scheme.borderDim.withAlpha(60), width: 0.5)),
+          title: Text('$name API Key', style: TextStyle(color: scheme.text, fontSize: 15)),
+          content: SizedBox(
+            width: 340,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: keyCtrl,
+                  obscureText: true,
+                  style: TextStyle(color: scheme.text, fontSize: 12, fontFamily: 'monospace'),
+                  decoration: InputDecoration(
+                    hintText: 'sk-...',
+                    labelText: 'API Key',
+                    labelStyle: TextStyle(color: scheme.textDim, fontSize: 11),
+                    filled: true, fillColor: scheme.background,
+                    border: OutlineInputBorder(borderSide: BorderSide(color: scheme.borderDim), borderRadius: BorderRadius.circular(6)),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: modelCtrl,
+                  style: TextStyle(color: scheme.text, fontSize: 12, fontFamily: 'monospace'),
+                  decoration: InputDecoration(
+                    hintText: 'gpt-4o',
+                    labelText: 'Default Model',
+                    labelStyle: TextStyle(color: scheme.textDim, fontSize: 11),
+                    filled: true, fillColor: scheme.background,
+                    border: OutlineInputBorder(borderSide: BorderSide(color: scheme.borderDim), borderRadius: BorderRadius.circular(6)),
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: color,
-              fontSize: 9,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 1,
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Cancel', style: TextStyle(color: scheme.textDim))),
+            TextButton(
+              onPressed: () async {
+                if (keyCtrl.text.trim().isEmpty) return;
+                try {
+                  final backend = context.read<BackendService>();
+                  await backend.httpPost('/config/update', {
+                    'updates': {
+                      'providers.$key.api_key': keyCtrl.text.trim(),
+                      'providers.$key.model': modelCtrl.text.trim(),
+                    }
+                  });
+                  if (ctx.mounted) Navigator.pop(ctx);
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Text('$name provider added!', style: TextStyle(color: scheme.text, fontSize: 11)),
+                      backgroundColor: scheme.surface,
+                    ));
+                    setState(() => _step = 2);
+                  }
+                } catch (e) {
+                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e', style: TextStyle(color: scheme.error, fontSize: 11)), backgroundColor: scheme.surface));
+                }
+              },
+              child: Text('Add Provider', style: TextStyle(color: scheme.primary, fontWeight: FontWeight.w600)),
+            ),
+          ],
+        ),
+      );
+      keyCtrl.dispose();
+      modelCtrl.dispose();
+    }
+  }
+
+  // ── Step 3: Select Model ────────────────────────────────────────
+
+  Widget _stepModel(AppColorScheme scheme) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('3. Select Default Model', style: TextStyle(color: scheme.text, fontSize: 16, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 6),
+        Text('Choose which model Hermes will use by default. You can switch anytime.', style: TextStyle(color: scheme.textDim, fontSize: 12, height: 1.5)),
+        const SizedBox(height: 16),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: scheme.cardBackground,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: scheme.borderDim, width: 0.5),
+          ),
+          child: Column(
+            children: [
+              Icon(Icons.memory_outlined, size: 40, color: scheme.primary.withAlpha(150)),
+              const SizedBox(height: 12),
+              Text('Model selection available in the', style: TextStyle(color: scheme.textDim, fontSize: 12)),
+              Text('Models tab once providers are configured.', style: TextStyle(color: scheme.textDim, fontSize: 12)),
+              const SizedBox(height: 16),
+              OutlinedButton(
+                style: OutlinedButton.styleFrom(foregroundColor: scheme.primary, side: BorderSide(color: scheme.primary.withAlpha(80))),
+                onPressed: () => widget.onNavigate?.call(2),
+                child: const Text('Open Models', style: TextStyle(fontSize: 12)),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: scheme.primary,
+              side: BorderSide(color: scheme.primary.withAlpha(80)),
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () => setState(() => _step = 3),
+            child: Text('Continue →', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── Step 4: Done ────────────────────────────────────────────────────
+
+  Widget _stepDone(AppColorScheme scheme, WingmanSettings settings, BackendConnectionState backendState) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(Icons.check_circle, size: 48, color: scheme.success),
+        const SizedBox(height: 16),
+        Text('Setup Complete!', style: TextStyle(color: scheme.text, fontSize: 20, fontWeight: FontWeight.w700)),
+        const SizedBox(height: 8),
+        Text('Hermes Agent is ready to go. Here\'s what\'s available:', style: TextStyle(color: scheme.textDim, fontSize: 13, height: 1.5)),
+        const SizedBox(height: 20),
+        _setupItem(scheme, Icons.chat, 'Chat with Hermes', 'Ask questions, run code, browse the web'),
+        _setupItem(scheme, Icons.memory_outlined, 'Switch Models', 'Pick from 166+ skills-powered models'),
+        _setupItem(scheme, Icons.auto_awesome, 'Manage Skills', 'Enable/disable agent capabilities'),
+        _setupItem(scheme, Icons.folder_open, 'Browse Files', 'Read and edit workspace files'),
+        _setupItem(scheme, Icons.schedule_outlined, 'Cron Jobs', 'Schedule recurring AI tasks'),
+        _setupItem(scheme, Icons.hub_outlined, 'Gateway', 'Connect Discord, Telegram, etc.'),
+        const SizedBox(height: 24),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: scheme.primary,
+              side: BorderSide(color: scheme.primary.withAlpha(80)),
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () => widget.onNavigate?.call(0),
+            child: const Text('Start Using Hermes Wingman', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+          ),
+        ),
+        if (_isMobile) ...[
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: scheme.accent,
+                side: BorderSide(color: scheme.accent.withAlpha(80)),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              onPressed: () => widget.onNavigate?.call(10),
+              icon: const Icon(Icons.settings_outlined, size: 16),
+              label: const Text('Configure Backend Connection', style: TextStyle(fontSize: 12)),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _setupItem(AppColorScheme scheme, IconData icon, String title, String desc) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          Container(
+            width: 32, height: 32,
+            decoration: BoxDecoration(color: scheme.primary.withAlpha(12), borderRadius: BorderRadius.circular(8)),
+            child: Icon(icon, size: 15, color: scheme.primary),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: TextStyle(color: scheme.text, fontSize: 13, fontWeight: FontWeight.w500)),
+                Text(desc, style: TextStyle(color: scheme.textMuted, fontSize: 10)),
+              ],
             ),
           ),
         ],
