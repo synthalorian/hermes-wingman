@@ -470,6 +470,41 @@ _state = BackendConnectionState.failed;
   /// Direct HTTP access for screens that need raw API access.
   Future<Map<String, dynamic>> httpGet(String path) => _get(path);
 
+  /// Direct HTTP GET that returns a list (for array-returning endpoints).
+  Future<List<dynamic>> httpGetList(String path) async {
+    var uri = Uri.parse('$_baseUrl$path');
+    final request = await _client.getUrl(uri);
+    request.headers.set('Content-Type', 'application/json');
+    final response = await request.close();
+    final body = await response.transform(utf8.decoder).join();
+    if (response.statusCode != 200) {
+      throw HermesClientException('HTTP ${response.statusCode}: $body', command: 'GET $path');
+    }
+    return jsonDecode(body) as List<dynamic>;
+  }
+
+  // ── File Operations ──────────────────────────────────────────────────
+
+  /// Get file info (size, permissions, modified time).
+  Future<Map<String, dynamic>> getFileInfo(String path) async {
+    return await _get('/files/info', {'path': path});
+  }
+
+  /// Delete a file or directory.
+  Future<Map<String, dynamic>> deleteFile(String path) async {
+    return await _post('/files/delete', {'path': path});
+  }
+
+  /// Rename a file or directory.
+  Future<Map<String, dynamic>> renameFile(String path, String newName) async {
+    return await _post('/files/rename', {'path': path, 'new_name': newName});
+  }
+
+  /// Create a directory.
+  Future<Map<String, dynamic>> createDirectory(String path, String name) async {
+    return await _post('/files/mkdir', {'path': path, 'name': name});
+  }
+
   /// Direct HTTP POST for screens that need raw API access.
   Future<Map<String, dynamic>> httpPost(String path, Map<String, dynamic> body) => _post(path, body);
 
@@ -479,6 +514,146 @@ _state = BackendConnectionState.failed;
   /// Toggle gateway.
   Future<Map<String, dynamic>> gatewayToggle(String action) async {
     return await _post('/gateway/toggle', {'action': action});
+  }
+
+  // ── Gateway Platforms ───────────────────────────────────────────────
+
+  /// Get all gateway platforms with config status.
+  Future<Map<String, dynamic>> getGatewayPlatforms() async {
+    return await _get('/gateway/platforms');
+  }
+
+  /// Configure a gateway platform by saving its env vars.
+  Future<Map<String, dynamic>> configureGatewayPlatform(
+      String platform, Map<String, String> vars) async {
+    return await _post('/gateway/configure/$platform', {'vars': vars});
+  }
+
+  /// Gateway service management (install/uninstall/start/stop/restart/status).
+  Future<Map<String, dynamic>> gatewayServiceAction(String action) async {
+    return await _post('/gateway/service/$action', {});
+  }
+
+  // ── Auth / Provider Login ────────────────────────────────────────────
+
+  /// Start OAuth login for a provider (returns auth URL).
+  Future<Map<String, dynamic>> loginOAuth(String provider) async {
+    return await _post('/auth/login/$provider', {});
+  }
+
+  /// Login with an API key for a provider.
+  Future<Map<String, dynamic>> loginApiKey(String provider, String apiKey) async {
+    return await _post('/auth/api-key', {
+      'provider': provider,
+      'api_key': apiKey,
+    });
+  }
+
+  /// Get auth status for all providers.
+  Future<Map<String, dynamic>> getAuthStatus() async {
+    return await _get('/auth/status');
+  }
+
+  /// Logout from a provider.
+  Future<Map<String, dynamic>> logoutProvider(String provider) async {
+    return await _post('/auth/logout/$provider', {});
+  }
+
+  // ── CLI Proxy Commands ────────────────────────────────────────────
+
+  /// Run any hermes CLI command through the backend proxy.
+  Future<Map<String, dynamic>> runCliCommand(List<String> args) async {
+    return await _post('/hermes/command', {'args': args});
+  }
+
+  /// Get fallback provider chain.
+  Future<Map<String, dynamic>> getFallbackChain() async {
+    return await _get('/cli/fallback');
+  }
+
+  /// Add a fallback provider.
+  Future<Map<String, dynamic>> addFallback(String provider, String model) async {
+    return await _post('/cli/fallback/add', {'provider': provider, 'model': model});
+  }
+
+  /// Clear fallback chain.
+  Future<Map<String, dynamic>> clearFallback() async {
+    return await _post('/cli/fallback/clear', {});
+  }
+
+  /// List webhooks.
+  Future<Map<String, dynamic>> getWebhooks() async {
+    return await _get('/cli/webhooks');
+  }
+
+  /// List MCP servers.
+  Future<Map<String, dynamic>> getMcpServers() async {
+    return await _get('/cli/mcp');
+  }
+
+  /// List plugins.
+  Future<Map<String, dynamic>> getPlugins() async {
+    return await _get('/cli/plugins');
+  }
+
+  /// Get curator status.
+  Future<Map<String, dynamic>> getCuratorStatus() async {
+    return await _get('/cli/curator');
+  }
+
+  /// Run hermes doctor.
+  Future<Map<String, dynamic>> runDoctor() async {
+    return await _get('/cli/doctor');
+  }
+
+  /// Run security audit.
+  Future<Map<String, dynamic>> runSecurityAudit() async {
+    return await _get('/cli/security');
+  }
+
+  /// Get setup dump.
+  Future<Map<String, dynamic>> getDump() async {
+    return await _get('/cli/dump');
+  }
+
+  /// Create debug report.
+  Future<Map<String, dynamic>> createDebugReport() async {
+    return await _get('/cli/debug');
+  }
+
+  /// Create backup.
+  Future<Map<String, dynamic>> createBackup() async {
+    return await _post('/cli/backup', {});
+  }
+
+  /// Get checkpoints status.
+  Future<Map<String, dynamic>> getCheckpoints() async {
+    return await _get('/cli/checkpoints');
+  }
+
+  /// List hooks.
+  Future<Map<String, dynamic>> getHooks() async {
+    return await _get('/cli/hooks');
+  }
+
+  /// Get proxy status.
+  Future<Map<String, dynamic>> getProxyStatus() async {
+    return await _get('/cli/proxy');
+  }
+
+  /// Get secrets status.
+  Future<Map<String, dynamic>> getSecretsStatus() async {
+    return await _get('/cli/secrets');
+  }
+
+  /// List pairing users.
+  Future<Map<String, dynamic>> getPairingUsers() async {
+    return await _get('/cli/pairing');
+  }
+
+  /// Get insights.
+  Future<Map<String, dynamic>> getInsights() async {
+    return await _get('/cli/insights');
   }
 
   // ── Skills ──────────────────────────────────────────────────────────

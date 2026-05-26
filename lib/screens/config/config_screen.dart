@@ -6,6 +6,7 @@ import '../../theme/app_theme.dart';
 import '../../services/hermes_service.dart';
 import '../../services/hermes_api_client.dart' show BackendService;
 import '../../services/wingman_settings.dart';
+import 'fallback_section.dart';
 
 final bool _isMobile = Platform.isAndroid || Platform.isIOS;
 

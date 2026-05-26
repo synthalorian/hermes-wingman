@@ -157,12 +157,29 @@ class _SplashLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
+    return Container(
       width: 96,
       height: 96,
-      child: CustomPaint(
-        painter: _SplashLogoPainter(glowRadius: glowRadius),
-        size: const Size(96, 96),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: glowRadius > 0
+            ? [
+                BoxShadow(
+                  color: const Color(0xFF8BA888).withAlpha(20),
+                  blurRadius: glowRadius,
+                  spreadRadius: glowRadius * 0.5,
+                ),
+              ]
+            : null,
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: Image.asset(
+          'assets/icons/hermes-wingman.png',
+          width: 96,
+          height: 96,
+          fit: BoxFit.cover,
+        ),
       ),
     );
   }

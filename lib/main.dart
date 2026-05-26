@@ -20,15 +20,18 @@ import 'screens/config/config_screen.dart';
 import 'screens/logs/logs_screen.dart';
 import 'screens/cron/cron_screen.dart';
 import 'screens/gateway/gateway_screen.dart';
+import 'screens/gateway/gateway_setup_screen.dart';
 import 'screens/chat/chat_screen.dart';
 import 'screens/models/models_screen.dart';
 import 'screens/setup/setup_wizard_screen.dart';
 import 'screens/tools/tools_screen.dart';
+import 'screens/tools/cli_tools_screen.dart';
 import 'screens/skills/skills_screen.dart';
 import 'screens/memory/memory_screen.dart';
 import 'screens/files/files_screen.dart';
 import 'screens/missions/missions_screen.dart';
 import 'screens/profiles/profiles_screen.dart';
+import 'screens/providers/providers_screen.dart';
 
 // System tray — stub on mobile, real on desktop
 import 'services/tray_service_stub.dart'
@@ -165,16 +168,19 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     _NavItem('Chat', Icons.chat, 'CHAT'),
     _NavItem('Models', Icons.memory_outlined, 'AI'),
     _NavItem('Tools', Icons.build_outlined, '⚙'),
+    _NavItem('CLI Tools', Icons.terminal_outlined, 'CLI'),
     _NavItem('Sessions', Icons.chat_bubble_outline, 'LOG'),
     _NavItem('Skills', Icons.auto_awesome, 'SKL'),
     _NavItem('Memory', Icons.storage, 'MEM'),
     _NavItem('Files', Icons.folder_open, 'FIL'),
     _NavItem('Missions', Icons.rocket_outlined, 'MIS'),
     _NavItem('Profiles', Icons.person_outline, 'PRO'),
+    _NavItem('Providers', Icons.vpn_key_outlined, 'KEY'),
     _NavItem('Config', Icons.settings_outlined, 'CFG'),
     _NavItem('Logs', Icons.terminal, 'SYS'),
     _NavItem('Cron', Icons.schedule_outlined, '⏰'),
     _NavItem('Gateway', Icons.hub_outlined, 'GW'),
+    _NavItem('Gateway Setup', Icons.tune_outlined, 'GWS'),
     _NavItem('Setup', Icons.rocket_outlined, '✨'),
   ];
 
@@ -202,16 +208,19 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
       const ChatScreen(),
       const ModelsScreen(),
       const ToolsScreen(),
+      const CliToolsScreen(),
       SessionsScreen(onNavigate: (i) => setState(() => _selectedIndex = i)),
       const SkillsScreen(),
       const MemoryScreen(),
       const FilesScreen(),
       const MissionsScreen(),
       const ProfilesScreen(),
+      const ProvidersScreen(),
       const ConfigScreen(),
       const LogsScreen(),
       const CronScreen(),
       const GatewayScreen(),
+      const GatewaySetupScreen(),
       SetupWizardScreen(onNavigate: (i) => setState(() => _selectedIndex = i)),
     ];
 
@@ -479,7 +488,15 @@ class _AnimatedSidebarIconState extends State<_AnimatedSidebarIcon>
                 filter: ui.ImageFilter.blur(sigmaX: 6, sigmaY: 6),
                 child: Material(
                   type: MaterialType.transparency,
-                  child: WingmanIcon(size: 40, showBackground: false),
+                  child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.asset(
+                'assets/icons/hermes-wingman.png',
+                width: 40,
+                height: 40,
+                fit: BoxFit.cover,
+              ),
+            ),
                 ),
               ),
             ),
