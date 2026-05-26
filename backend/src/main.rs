@@ -7,11 +7,12 @@ use axum::{
 };
 use futures::stream::Stream;
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::process::Command;
 use std::sync::Arc;
 use std::sync::Mutex;
+use tokio::sync::oneshot;
 use tower_http::cors::CorsLayer;
 
 // ── Platform Helpers ─────────────────────────────────────────────────────────
@@ -116,6 +117,9 @@ struct AppState {
     /// When Some, all chat requests use this model instead of config.yaml's `model:`.
     /// When None, falls back to config.yaml.
     override_model: Arc<Mutex<Option<String>>>,
+    /// Tracks running OAuth login processes.
+    /// Map of provider name -> oneshot sender for the auth URL.
+    auth_urls: Arc<Mutex<HashMap<String, oneshot::Sender<String>>>>,
 }
 
 impl AppState {
@@ -123,6 +127,7 @@ impl AppState {
         Self {
             hermes_home: hermes_home_dir(),
             override_model: Arc::new(Mutex::new(None)),
+            auth_urls: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
@@ -1274,6 +1279,321 @@ fn parse_log_line(line: &str) -> (String, String, String) {
     }
 }
 
+// ── Gateway Platforms ───────────────────────────────────────────────────────
+
+/// Helper: read a value from ~/.hermes/.env
+fn get_env_value(key: &str, home: &PathBuf) -> String {
+    let env_path = home.join(".env");
+    match read_file(&env_path) {
+        Ok(content) => {
+            for line in content.lines() {
+                let trimmed = line.trim();
+                if let Some(val) = trimmed.strip_prefix(&format!("{}=", key)) {
+                    return val.to_string();
+                }
+                if let Some(val) = trimmed.strip_prefix(&format!("# {}=", key)) {
+                    return val.to_string();
+                }
+            }
+            String::new()
+        }
+        Err(_) => String::new(),
+    }
+}
+
+/// Helper: save a value to ~/.hermes/.env via Python helper
+fn save_env_value(key: &str, value: &str) -> Result<String, String> {
+    let py_script = std::path::Path::new("/tmp/save_env.py");
+    if !py_script.exists() {
+        let s = r##"import os, sys
+def save_env_value(key, value):
+    env_path = os.path.expanduser("~/.hermes/.env")
+    content = ""
+    if os.path.exists(env_path):
+        with open(env_path) as f:
+            content = f.read()
+    lines = content.splitlines(keepends=True)
+    found = False
+    new_lines = []
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith(key + "=") or stripped.startswith("# " + key + "="):
+            if not found:
+                new_lines.append(f"{key}={value}\n")
+                found = True
+        else:
+            new_lines.append(line)
+    if not found:
+        new_lines.append(f"{key}={value}\n")
+    with open(env_path, "w") as f:
+        f.writelines(new_lines)
+    print(f"Saved {key}")
+if __name__ == "__main__":
+    if len(sys.argv) >= 4 and sys.argv[1] == "set":
+        save_env_value(sys.argv[2], sys.argv[3])
+    elif len(sys.argv) >= 3 and sys.argv[1] == "get":
+        import os
+        env_path = os.path.expanduser("~/.hermes/.env")
+        if os.path.exists(env_path):
+            with open(env_path) as f:
+                for line in f:
+                    s = line.strip()
+                    if s.startswith(sys.argv[2] + "="):
+                        print(s[len(sys.argv[2])+1:])
+                        break
+"##;
+        std::fs::write(py_script, s).map_err(|e| format!("Create helper: {}", e))?;
+    }
+    let output = Command::new("python3")
+        .args([py_script.to_str().unwrap_or("/tmp/save_env.py"), "set", key, value])
+        .output()
+        .map_err(|e| format!("Run helper: {}", e))?;
+    if output.status.success() {
+        Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+    } else {
+        Err(String::from_utf8_lossy(&output.stderr).trim().to_string())
+    }
+}
+
+/// All known gateway platforms with their metadata and field schemas.
+fn get_platform_definitions() -> Vec<serde_json::Value> {
+    vec![
+        serde_json::json!({"key":"telegram","label":"Telegram","emoji":"📱","token_var":"TELEGRAM_BOT_TOKEN",
+            "instructions":["1. Open Telegram and message @BotFather","2. Send /newbot to create your bot","3. Copy the bot token","4. Get your user ID: message @userinfobot"],
+            "vars":[
+                {"name":"TELEGRAM_BOT_TOKEN","prompt":"Bot token","password":true,"help":"Paste the token from @BotFather."},
+                {"name":"TELEGRAM_ALLOWED_USERS","prompt":"Allowed user IDs (comma-separated)","password":false,"is_allowlist":true,"help":"Your numeric user ID."},
+            ]}),
+        serde_json::json!({"key":"discord","label":"Discord","emoji":"🎮","token_var":"DISCORD_BOT_TOKEN",
+            "instructions":["1. https://discord.com/developers/applications → New Application","2. Bot → Reset Token → copy","3. OAuth2 URL Generator → bot scope","4. Invite bot to your server","5. Enable Developer Mode → right-click name → Copy ID"],
+            "vars":[
+                {"name":"DISCORD_BOT_TOKEN","prompt":"Bot token","password":true,"help":"From Discord Developer Portal."},
+                {"name":"DISCORD_ALLOWED_USERS","prompt":"Allowed user IDs","password":false,"is_allowlist":true,"help":"Your Discord user ID."},
+            ]}),
+        serde_json::json!({"key":"slack","label":"Slack","emoji":"💼","token_var":"SLACK_BOT_TOKEN",
+            "instructions":["1. https://api.slack.com/apps → Create New App","2. Enable Socket Mode","3. Add Bot Token Scopes","4. Install to Workspace"],
+            "vars":[
+                {"name":"SLACK_BOT_TOKEN","prompt":"Bot Token (xoxb-...)","password":true},
+                {"name":"SLACK_APP_TOKEN","prompt":"App Token (xapp-...)","password":true},
+            ]}),
+        serde_json::json!({"key":"signal","label":"Signal","emoji":"📡","token_var":"SIGNAL_HTTP_URL",
+            "instructions":["Run a Signal REST API server and enter the URL below."],
+            "vars":[{"name":"SIGNAL_HTTP_URL","prompt":"Signal REST API URL","password":false,"help":"e.g. http://localhost:8080"}]}),
+        serde_json::json!({"key":"email","label":"Email","emoji":"📧","token_var":"EMAIL_ADDRESS",
+            "instructions":["Use a dedicated email account. For Gmail: enable 2FA + create App Password."],
+            "vars":[
+                {"name":"EMAIL_ADDRESS","prompt":"Email address","password":false},
+                {"name":"EMAIL_PASSWORD","prompt":"Email password (or app password)","password":true},
+                {"name":"EMAIL_IMAP_HOST","prompt":"IMAP host","password":false,"help":"e.g. imap.gmail.com"},
+                {"name":"EMAIL_SMTP_HOST","prompt":"SMTP host","password":false,"help":"e.g. smtp.gmail.com"},
+                {"name":"EMAIL_ALLOWED_USERS","prompt":"Allowed sender emails","password":false,"is_allowlist":true},
+            ]}),
+        serde_json::json!({"key":"sms","label":"SMS (Twilio)","emoji":"📱","token_var":"TWILIO_ACCOUNT_SID",
+            "instructions":["Create a Twilio account and buy a phone number."],
+            "vars":[
+                {"name":"TWILIO_ACCOUNT_SID","prompt":"Account SID","password":false},
+                {"name":"TWILIO_AUTH_TOKEN","prompt":"Auth Token","password":true},
+                {"name":"TWILIO_PHONE_NUMBER","prompt":"Phone number (E.164)","password":false,"help":"e.g. +15551234567"},
+            ]}),
+        serde_json::json!({"key":"matrix","label":"Matrix","emoji":"🔐","token_var":"MATRIX_ACCESS_TOKEN",
+            "instructions":["Works with any Matrix homeserver. Create a bot user."],
+            "vars":[
+                {"name":"MATRIX_HOMESERVER","prompt":"Homeserver URL","password":false,"help":"e.g. https://matrix.example.org"},
+                {"name":"MATRIX_ACCESS_TOKEN","prompt":"Access token","password":true,"help":"Or leave empty for password login."},
+                {"name":"MATRIX_ALLOWED_USERS","prompt":"Allowed user IDs","password":false,"is_allowlist":true},
+            ]}),
+        serde_json::json!({"key":"mattermost","label":"Mattermost","emoji":"💬","token_var":"MATTERMOST_TOKEN",
+            "instructions":["Integrations → Bot Accounts → Add Bot Account"],
+            "vars":[
+                {"name":"MATTERMOST_URL","prompt":"Server URL","password":false,"help":"e.g. https://mm.example.com"},
+                {"name":"MATTERMOST_TOKEN","prompt":"Bot token","password":true},
+                {"name":"MATTERMOST_ALLOWED_USERS","prompt":"Allowed user IDs","password":false,"is_allowlist":true},
+            ]}),
+        serde_json::json!({"key":"whatsapp","label":"WhatsApp","emoji":"📲","token_var":"WHATSAPP_ENABLED",
+            "instructions":["Enable and use QR code pairing via the gateway."],"vars":[]}),
+        serde_json::json!({"key":"dingtalk","label":"DingTalk","emoji":"💬","token_var":"DINGTALK_CLIENT_ID",
+            "instructions":["https://open-dev.dingtalk.com → Create Application"],
+            "vars":[
+                {"name":"DINGTALK_CLIENT_ID","prompt":"AppKey (Client ID)","password":false},
+                {"name":"DINGTALK_CLIENT_SECRET","prompt":"AppSecret","password":true},
+            ]}),
+        serde_json::json!({"key":"feishu","label":"Feishu / Lark","emoji":"🪽","token_var":"FEISHU_APP_ID",
+            "instructions":["https://open.feishu.cn/ → Create app and enable Bot capability"],
+            "vars":[
+                {"name":"FEISHU_APP_ID","prompt":"App ID","password":false},
+                {"name":"FEISHU_APP_SECRET","prompt":"App Secret","password":true},
+            ]}),
+        serde_json::json!({"key":"wecom","label":"WeCom","emoji":"💬","token_var":"WECOM_BOT_ID",
+            "instructions":["WeCom Admin Console → Applications → Create AI Bot"],
+            "vars":[
+                {"name":"WECOM_BOT_ID","prompt":"Bot ID","password":false},
+                {"name":"WECOM_SECRET","prompt":"Secret","password":true},
+            ]}),
+        serde_json::json!({"key":"weixin","label":"Weixin / WeChat","emoji":"💬","token_var":"WEIXIN_ACCOUNT_ID",
+            "instructions":["Configure via Weixin Official Account platform."],"vars":[]}),
+        serde_json::json!({"key":"bluebubbles","label":"BlueBubbles","emoji":"💬","token_var":"BLUEBUBBLES_SERVER_URL",
+            "instructions":["Install BlueBubbles on a Mac: https://bluebubbles.app/"],
+            "vars":[
+                {"name":"BLUEBUBBLES_SERVER_URL","prompt":"Server URL","password":false,"help":"e.g. http://192.168.1.10:1234"},
+                {"name":"BLUEBUBBLES_PASSWORD","prompt":"Password","password":true},
+            ]}),
+        serde_json::json!({"key":"qqbot","label":"QQ Bot","emoji":"🐧","token_var":"QQ_APP_ID",
+            "instructions":["Register at q.qq.com"],
+            "vars":[
+                {"name":"QQ_APP_ID","prompt":"App ID","password":false},
+                {"name":"QQ_CLIENT_SECRET","prompt":"App Secret","password":true},
+            ]}),
+        serde_json::json!({"key":"yuanbao","label":"Yuanbao","emoji":"💎","token_var":"YUANBAO_APP_ID",
+            "instructions":["Download from https://yuanbao.tencent.com/ → Create a bot"],
+            "vars":[
+                {"name":"YUANBAO_APP_ID","prompt":"App ID","password":false},
+                {"name":"YUANBAO_APP_SECRET","prompt":"App Secret","password":true},
+            ]}),
+    ]
+}
+
+/// Get all gateway platforms with their metadata and current config status.
+async fn gateway_get_platforms(State(state): State<Arc<AppState>>) -> Json<serde_json::Value> {
+    let home = state.hermes_home.clone();
+    let definitions = get_platform_definitions();
+
+    let gw_path = state.gateway_state_path();
+    let gateway_state = read_file(&gw_path).ok()
+        .and_then(|c| serde_json::from_str::<serde_json::Value>(&c).ok());
+
+    let mut result = Vec::new();
+    for mut platform in definitions {
+        let key = platform["key"].as_str().unwrap_or("").to_string();
+        let token_var = platform["token_var"].as_str().unwrap_or("");
+
+        let has_token = if !token_var.is_empty() {
+            let val = get_env_value(token_var, &home);
+            !val.is_empty() && !val.starts_with('<') && !val.starts_with('#')
+        } else {
+            false
+        };
+
+        let runtime_status = gateway_state.as_ref()
+            .and_then(|g| g["platforms"].get(&key))
+            .and_then(|p| p["state"].as_str())
+            .unwrap_or("disconnected");
+
+        let status = if has_token {
+            if runtime_status == "connected" { "connected" }
+            else if runtime_status == "retrying" || runtime_status == "error" { "error" }
+            else { "configured" }
+        } else {
+            "not_configured"
+        };
+
+        if let Some(vars) = platform["vars"].as_array_mut() {
+            for var in vars.iter_mut() {
+                let name = var["name"].as_str().unwrap_or("");
+                let is_password = var.get("password").and_then(|p| p.as_bool()).unwrap_or(false);
+                let current = get_env_value(name, &home);
+                if !current.is_empty() {
+                    var["current"] = serde_json::json!(
+                        if is_password {
+                            if current.len() > 8 { format!("{}…{}", &current[..4], &current[current.len()-4..]) }
+                            else { "••••••••".to_string() }
+                        } else { current }
+                    );
+                }
+            }
+        }
+
+        platform["status"] = serde_json::json!(status);
+        platform["runtime_status"] = serde_json::json!(runtime_status);
+        platform["has_token"] = serde_json::json!(has_token);
+        result.push(platform);
+    }
+
+    Json(serde_json::json!(result))
+}
+
+/// Configure a gateway platform by saving its env vars.
+async fn gateway_configure_platform(
+    Path(platform): Path<String>,
+    Json(body): Json<serde_json::Value>,
+) -> Json<serde_json::Value> {
+    let vars = body["vars"].as_object().cloned();
+    let vars = match vars {
+        Some(v) => v,
+        None => return Json(serde_json::json!({"success": false, "error": "vars object required"})),
+    };
+
+    let mut errors = Vec::new();
+    let mut saved = Vec::new();
+
+    for (key, value) in &vars {
+        let val = value.as_str().unwrap_or("");
+        match save_env_value(key, val) {
+            Ok(msg) => saved.push(msg),
+            Err(e) => errors.push(format!("{}: {}", key, e)),
+        }
+    }
+
+    Json(serde_json::json!({
+        "success": errors.is_empty(),
+        "platform": platform,
+        "saved": saved,
+        "errors": if errors.is_empty() { serde_json::Value::Null } else { serde_json::json!(errors) },
+    }))
+}
+
+/// Gateway service management.
+async fn gateway_service_action(
+    Path(action): Path<String>,
+) -> Json<serde_json::Value> {
+    let hermes_args: &[&str] = match action.as_str() {
+        "install" => &["gateway", "install"],
+        "uninstall" => &["gateway", "uninstall"],
+        "start" => &["gateway", "start"],
+        "stop" => &["gateway", "stop"],
+        "restart" => &["gateway", "restart"],
+        "status" => &["gateway", "status"],
+        _ => return Json(serde_json::json!({"success": false, "error": format!("Unknown action: {}", action)})),
+    };
+
+    if action == "stop" {
+        match std::process::Command::new(hermes_binary_path())
+            .args(hermes_args)
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .spawn()
+        {
+            Ok(mut child) => {
+                if let Some(stdin) = child.stdin.take() {
+                    use std::io::Write;
+                    let _ = write!(&stdin, "y\n");
+                    drop(stdin);
+                }
+                match child.wait_with_output() {
+                    Ok(output) => Json(serde_json::json!({
+                        "success": output.status.success(),
+                        "action": action,
+                        "stdout": String::from_utf8_lossy(&output.stdout).trim(),
+                        "stderr": String::from_utf8_lossy(&output.stderr).trim(),
+                    })),
+                    Err(e) => Json(serde_json::json!({"success": false, "error": e.to_string()})),
+                }
+            }
+            Err(e) => Json(serde_json::json!({"success": false, "error": e.to_string()})),
+        }
+    } else {
+        match run_hermes(hermes_args) {
+            Ok((stdout, stderr, code)) => Json(serde_json::json!({
+                "success": code == 0,
+                "action": action,
+                "stdout": stdout.trim(),
+                "stderr": stderr.trim(),
+            })),
+            Err(e) => Json(serde_json::json!({"success": false, "error": e})),
+        }
+    }
+}
+
 async fn get_gateway(State(state): State<Arc<AppState>>) -> Json<serde_json::Value> {
     let gw_path = state.gateway_state_path();
     match read_file(&gw_path) {
@@ -1453,9 +1773,48 @@ struct InstallRequest {
 }
 
 async fn install_hermes(Json(body): Json<InstallRequest>) -> Json<serde_json::Value> {
-    let method = body.method.as_deref().unwrap_or("auto");
+    let method = body.method.as_deref().unwrap_or("curl");
 
     match method {
+        "curl" | "auto" => {
+            // Primary method: official Hermes install script
+            // curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh | bash
+            match Command::new("bash")
+                .arg("-c")
+                .arg("curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh | bash")
+                .output()
+            {
+                Ok(output) if output.status.success() => {
+                    let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+                    Json(serde_json::json!({"success": true, "method": "curl", "output": stdout.chars().take(1000).collect::<String>()}))
+                }
+                Ok(output) => {
+                    let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+                    let out_stdout = String::from_utf8_lossy(&output.stdout).to_string();
+                    let has_curl = Command::new("which").arg("curl").output().map(|o| o.status.success()).unwrap_or(false);
+                    let has_wget = Command::new("which").arg("wget").output().map(|o| o.status.success()).unwrap_or(false);
+                    
+                    if !has_curl && !has_wget {
+                        return Json(serde_json::json!({
+                            "success": false,
+                            "error": "curl is not installed on this system. Please install curl first:\n  apt install curl   # Debian/Ubuntu\n  pacman -S curl      # Arch\n  brew install curl   # macOS\n  yum install curl    # RHEL/Fedora\n\nThen run the setup again.",
+                            "needs_curl": true,
+                        }));
+                    }
+                    
+                    Json(serde_json::json!({
+                        "success": false,
+                        "method": "curl",
+                        "error": stderr.chars().take(500).collect::<String>(),
+                        "stdout": out_stdout.chars().take(200).collect::<String>(),
+                    }))
+                }
+                Err(e) => Json(serde_json::json!({
+                    "success": false,
+                    "error": format!("Failed to run installer: {}", e),
+                })),
+            }
+        }
         "brew" => {
             // macOS Homebrew installation
             match Command::new("brew").args(["install", "hermes-agent"]).output() {
@@ -2049,39 +2408,53 @@ async fn hermes_skills_toggle(
 // ── Memory ──────────────────────────────────────────────────────────────────
 
 async fn memory_list() -> Json<serde_json::Value> {
-    match run_hermes(&["memory", "list"]) {
-        Ok((stdout, _stderr, code)) => {
-            let entries: Vec<serde_json::Value> = stdout.lines()
-                .filter(|l| l.trim().starts_with('│') && !l.contains("━━━") && !l.contains("───"))
-                .filter_map(|line| {
-                    let parts: Vec<&str> = line.split('│').collect();
-                    if parts.len() >= 3 {
-                        let key = parts.get(1).map(|s| s.trim()).unwrap_or("").to_string();
-                        let content = parts.get(2).map(|s| s.trim()).unwrap_or("").to_string();
-                        if !key.is_empty() && !key.starts_with("Key") {
-                            return Some(serde_json::json!({
-                                "key": key,
-                                "content": content,
-                                "type": parts.get(3).map(|s| s.trim()).unwrap_or("unknown"),
-                            }));
-                        }
-                    }
-                    None
-                })
-                .collect();
-
-            Json(serde_json::json!({
-                "success": code == 0,
-                "entries": entries,
-                "count": entries.len(),
-            }))
-        }
-        Err(e) => Json(serde_json::json!({
-            "success": false,
-            "entries": [],
-            "error": e,
-        })),
+    // Read MEMORY.md and USER.md from ~/.hermes/memories/
+    let mem_path = hermes_home_dir().join("memories").join("MEMORY.md");
+    let user_path = hermes_home_dir().join("memories").join("USER.md");
+    
+    let memory_content = read_file(&mem_path).unwrap_or_default();
+    let user_content = read_file(&user_path).unwrap_or_default();
+    
+    // Parse MEMORY.md into entries (separated by §)
+    let mut entries = Vec::new();
+    for section in memory_content.split('§') {
+        let trimmed = section.trim();
+        if trimmed.is_empty() { continue; }
+        let lines: Vec<&str> = trimmed.lines().collect();
+        let first_line = lines.first().unwrap_or(&"");
+        let key = if first_line.starts_with('#') { first_line.trim_start_matches('#').trim().to_string() }
+                   else if first_line.starts_with("**") { first_line.trim_matches('*').to_string() }
+                   else { first_line.to_string() };
+        let content = if lines.len() > 1 { lines[1..].join("\n").trim().to_string() } else { String::new() };
+        
+        entries.push(serde_json::json!({
+            "key": if key.is_empty() { format!("Entry {}", entries.len() + 1) } else { key },
+            "content": content.chars().take(200).collect::<String>(),
+            "type": "memory",
+        }));
     }
+    
+    // Add USER.md as an entry
+    if !user_content.is_empty() {
+        entries.push(serde_json::json!({
+            "key": "User Profile (USER.md)",
+            "content": user_content.chars().take(200).collect::<String>(),
+            "type": "user_profile",
+        }));
+    }
+    
+    // Get memory provider status
+    let status = match run_hermes(&["memory", "status"]) {
+        Ok((stdout, _, _)) => stdout.trim().to_string(),
+        Err(_) => String::new(),
+    };
+
+    Json(serde_json::json!({
+        "success": true,
+        "entries": entries,
+        "count": entries.len(),
+        "status": status,
+    }))
 }
 
 async fn memory_get(
@@ -2154,17 +2527,23 @@ async fn memory_search(
 
 // ── File Operations ─────────────────────────────────────────────────────────
 
+/// Resolve a filesystem path, allowing navigation outside ~/.hermes.
+/// If the path starts with '/', use it as-is (absolute path).
+/// Otherwise, resolve relative to the user's HOME.
 fn resolve_fs_path(state: &AppState, relative_path: &str) -> PathBuf {
-    let base = &state.hermes_home;
-    // Prevent directory traversal
-    let clean = relative_path
-        .replace("..", "")
-        .trim_start_matches('/')
-        .to_string();
-    if clean.is_empty() {
-        base.clone()
+    let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".into());
+    if relative_path.starts_with('/') {
+        // Absolute path — use as-is (filesystem-wide access)
+        PathBuf::from(relative_path)
+    } else if relative_path.is_empty() || relative_path == "." {
+        PathBuf::from(&home)
+    } else if relative_path.starts_with("~/") {
+        PathBuf::from(&home).join(&relative_path[2..])
+    } else if relative_path.starts_with("./") {
+        PathBuf::from(&home).join(&relative_path[2..])
     } else {
-        base.join(&clean)
+        // Relative path — resolve from home
+        PathBuf::from(&home).join(relative_path)
     }
 }
 
@@ -2257,7 +2636,6 @@ async fn files_write(
     Json(body): Json<FileWriteBody>,
 ) -> Json<serde_json::Value> {
     let full_path = resolve_fs_path(&state, &body.path);
-    // Ensure parent dir exists
     if let Some(parent) = full_path.parent() {
         let _ = std::fs::create_dir_all(parent);
     }
@@ -2271,6 +2649,105 @@ async fn files_write(
             "success": false,
             "error": format!("Cannot write file: {}", e),
         })),
+    }
+}
+
+// ── File Operations (Info, Delete, Rename, Mkdir) ────────────────────────
+
+#[derive(Deserialize)]
+struct FileQuery {
+    path: String,
+}
+
+async fn files_info(
+    State(state): State<Arc<AppState>>,
+    Query(query): Query<FileQuery>,
+) -> Json<serde_json::Value> {
+    let full_path = resolve_fs_path(&state, &query.path);
+    if !full_path.exists() {
+        return Json(serde_json::json!({"success": false, "error": "Path not found"}));
+    }
+    let metadata = match std::fs::metadata(&full_path) {
+        Ok(m) => m,
+        Err(e) => return Json(serde_json::json!({"success": false, "error": e.to_string()})),
+    };
+    use std::os::unix::fs::PermissionsExt;
+    let perms = metadata.permissions().mode();
+    let is_dir = metadata.is_dir();
+    let size = metadata.len();
+    let modified = metadata.modified()
+        .ok()
+        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+
+    Json(serde_json::json!({
+        "success": true,
+        "name": full_path.file_name().map(|n| n.to_string_lossy()).unwrap_or_default(),
+        "path": query.path,
+        "is_dir": is_dir,
+        "size": size,
+        "modified": modified,
+        "permissions": format!("{:o}", perms & 0o777),
+    }))
+}
+
+async fn files_delete(
+    State(state): State<Arc<AppState>>,
+    Json(body): Json<FileQuery>,
+) -> Json<serde_json::Value> {
+    let full_path = resolve_fs_path(&state, &body.path);
+    if !full_path.exists() {
+        return Json(serde_json::json!({"success": false, "error": "Path not found"}));
+    }
+    let result = if full_path.is_dir() {
+        std::fs::remove_dir_all(&full_path)
+    } else {
+        std::fs::remove_file(&full_path)
+    };
+    match result {
+        Ok(()) => Json(serde_json::json!({"success": true, "path": body.path})),
+        Err(e) => Json(serde_json::json!({"success": false, "error": e.to_string()})),
+    }
+}
+
+#[derive(Deserialize)]
+struct FileRenameBody {
+    path: String,
+    new_name: String,
+}
+
+async fn files_rename(
+    State(state): State<Arc<AppState>>,
+    Json(body): Json<FileRenameBody>,
+) -> Json<serde_json::Value> {
+    let full_path = resolve_fs_path(&state, &body.path);
+    if !full_path.exists() {
+        return Json(serde_json::json!({"success": false, "error": "Path not found"}));
+    }
+    let parent = full_path.parent().unwrap_or(std::path::Path::new("/"));
+    let new_path = parent.join(&body.new_name);
+    match std::fs::rename(&full_path, &new_path) {
+        Ok(()) => Json(serde_json::json!({"success": true, "from": body.path, "to": body.new_name})),
+        Err(e) => Json(serde_json::json!({"success": false, "error": e.to_string()})),
+    }
+}
+
+#[derive(Deserialize)]
+struct FileMkdirBody {
+    path: String,
+    name: String,
+}
+
+async fn files_mkdir(
+    State(state): State<Arc<AppState>>,
+    Json(body): Json<FileMkdirBody>,
+) -> Json<serde_json::Value> {
+    let base_path = resolve_fs_path(&state, &body.path);
+    let dir_path = base_path.join(&body.name);
+    match std::fs::create_dir(&dir_path) {
+        Ok(()) => Json(serde_json::json!({"success": true, "path": format!("{}/{}", body.path, body.name)})),
+        Err(e) => Json(serde_json::json!({"success": false, "error": e.to_string()})),
     }
 }
 
@@ -2302,6 +2779,375 @@ async fn hermes_command(
     }
 }
 
+// ── CLI Proxy Endpoints ────────────────────────────────────────────────────
+// These wrap `hermes <subcommand>` calls for features that don't have
+// dedicated Wingman screens yet. Each returns parsed JSON when possible.
+
+async fn cli_fallback_list() -> Json<serde_json::Value> {
+    match run_hermes(&["fallback", "list"]) {
+        Ok((stdout, _, _)) => {
+            let lines: Vec<String> = stdout.lines().map(|l| l.trim().to_string()).filter(|l| !l.is_empty()).collect();
+            Json(serde_json::json!({ "success": true, "chain": lines }))
+        },
+        Err(e) => Json(serde_json::json!({ "success": false, "error": e })),
+    }
+}
+
+async fn cli_fallback_add(Json(body): Json<serde_json::Value>) -> Json<serde_json::Value> {
+    let provider = body["provider"].as_str().unwrap_or("");
+    let model = body["model"].as_str().unwrap_or("");
+    if provider.is_empty() || model.is_empty() {
+        return Json(serde_json::json!({ "success": false, "error": "provider and model required" }));
+    }
+    match run_hermes(&["fallback", "add", "--provider", provider, "--model", model]) {
+        Ok((stdout, _, code)) => Json(serde_json::json!({ "success": code == 0, "stdout": stdout.trim() })),
+        Err(e) => Json(serde_json::json!({ "success": false, "error": e })),
+    }
+}
+
+async fn cli_fallback_clear() -> Json<serde_json::Value> {
+    match run_hermes(&["fallback", "clear"]) {
+        Ok((stdout, _, code)) => Json(serde_json::json!({ "success": code == 0, "stdout": stdout.trim() })),
+        Err(e) => Json(serde_json::json!({ "success": false, "error": e })),
+    }
+}
+
+async fn cli_webhook_list() -> Json<serde_json::Value> {
+    match run_hermes(&["webhook", "list"]) {
+        Ok((stdout, _, _)) => Json(serde_json::json!({ "success": true, "webhooks": stdout.trim() })),
+        Err(e) => Json(serde_json::json!({ "success": false, "error": e })),
+    }
+}
+
+async fn cli_hooks_list() -> Json<serde_json::Value> {
+    match run_hermes(&["hooks", "list"]) {
+        Ok((stdout, _, _)) => Json(serde_json::json!({ "success": true, "hooks": stdout.trim() })),
+        Err(e) => Json(serde_json::json!({ "success": false, "error": e })),
+    }
+}
+
+async fn cli_plugins_list() -> Json<serde_json::Value> {
+    match run_hermes(&["plugins", "list"]) {
+        Ok((stdout, _, _)) => Json(serde_json::json!({ "success": true, "plugins": stdout.trim() })),
+        Err(e) => Json(serde_json::json!({ "success": false, "error": e })),
+    }
+}
+
+async fn cli_curator_status() -> Json<serde_json::Value> {
+    match run_hermes(&["curator", "status"]) {
+        Ok((stdout, _, _)) => Json(serde_json::json!({ "success": true, "status": stdout.trim() })),
+        Err(e) => Json(serde_json::json!({ "success": false, "error": e })),
+    }
+}
+
+async fn cli_mcp_list() -> Json<serde_json::Value> {
+    match run_hermes(&["mcp", "list"]) {
+        Ok((stdout, _, _)) => Json(serde_json::json!({ "success": true, "servers": stdout.trim() })),
+        Err(e) => Json(serde_json::json!({ "success": false, "error": e })),
+    }
+}
+
+async fn cli_doctor() -> Json<serde_json::Value> {
+    match run_hermes(&["doctor"]) {
+        Ok((stdout, _, code)) => Json(serde_json::json!({ "success": code == 0, "output": stdout.trim() })),
+        Err(e) => Json(serde_json::json!({ "success": false, "error": e })),
+    }
+}
+
+async fn cli_security_audit() -> Json<serde_json::Value> {
+    match run_hermes(&["security", "audit"]) {
+        Ok((stdout, _, code)) => Json(serde_json::json!({ "success": code == 0, "output": stdout.trim() })),
+        Err(e) => Json(serde_json::json!({ "success": false, "error": e })),
+    }
+}
+
+async fn cli_dump() -> Json<serde_json::Value> {
+    match run_hermes(&["dump"]) {
+        Ok((stdout, _, _)) => Json(serde_json::json!({ "success": true, "dump": stdout.trim() })),
+        Err(e) => Json(serde_json::json!({ "success": false, "error": e })),
+    }
+}
+
+async fn cli_debug_share() -> Json<serde_json::Value> {
+    match run_hermes(&["debug", "share", "--local"]) {
+        Ok((stdout, _, code)) => Json(serde_json::json!({ "success": code == 0, "output": stdout.trim() })),
+        Err(e) => Json(serde_json::json!({ "success": false, "error": e })),
+    }
+}
+
+async fn cli_backup_create() -> Json<serde_json::Value> {
+    match run_hermes(&["backup", "--quick"]) {
+        Ok((stdout, _, code)) => Json(serde_json::json!({ "success": code == 0, "output": stdout.trim() })),
+        Err(e) => Json(serde_json::json!({ "success": false, "error": e })),
+    }
+}
+
+async fn cli_checkpoints_status() -> Json<serde_json::Value> {
+    match run_hermes(&["checkpoints", "status"]) {
+        Ok((stdout, _, _)) => Json(serde_json::json!({ "success": true, "status": stdout.trim() })),
+        Err(e) => Json(serde_json::json!({ "success": false, "error": e })),
+    }
+}
+
+async fn cli_proxy_status() -> Json<serde_json::Value> {
+    match run_hermes(&["proxy", "status"]) {
+        Ok((stdout, _, _)) => Json(serde_json::json!({ "success": true, "status": stdout.trim() })),
+        Err(e) => Json(serde_json::json!({ "success": false, "error": e })),
+    }
+}
+
+async fn cli_secrets_status() -> Json<serde_json::Value> {
+    match run_hermes(&["secrets", "bitwarden", "status"]) {
+        Ok((stdout, _, code)) => Json(serde_json::json!({ "success": code == 0, "output": stdout.trim() })),
+        Err(e) => Json(serde_json::json!({ "success": false, "error": e })),
+    }
+}
+
+async fn cli_pairing_list() -> Json<serde_json::Value> {
+    match run_hermes(&["pairing", "list"]) {
+        Ok((stdout, _, _)) => Json(serde_json::json!({ "success": true, "users": stdout.trim() })),
+        Err(e) => Json(serde_json::json!({ "success": false, "error": e })),
+    }
+}
+
+async fn cli_insights() -> Json<serde_json::Value> {
+    match run_hermes(&["insights", "--days", "7"]) {
+        Ok((stdout, _, _)) => Json(serde_json::json!({ "success": true, "insights": stdout.trim() })),
+        Err(e) => Json(serde_json::json!({ "success": false, "error": e })),
+    }
+}
+
+// ── Auth / Provider Login ───────────────────────────────────────────────────
+
+/// Start an OAuth login flow for a provider.
+/// Spawns `hermes auth add --type oauth --no-browser {provider}` in background,
+/// captures the auth URL from stdout, and returns it to Flutter.
+/// The hermes process continues running to handle the OAuth callback.
+async fn auth_start_oauth(
+    Path(provider): Path<String>,
+    State(state): State<Arc<AppState>>,
+) -> Json<serde_json::Value> {
+    // Check if already logged in
+    let auth_path = state.hermes_home.join("auth.json");
+    let already_logged_in = read_file(&auth_path)
+        .ok()
+        .and_then(|c| serde_json::from_str::<serde_json::Value>(&c).ok())
+        .and_then(|j| j["providers"].as_object().map(|p| p.contains_key(&provider)))
+        .unwrap_or(false);
+
+    if already_logged_in {
+        return Json(serde_json::json!({
+            "success": true,
+            "provider": provider,
+            "url": null,
+            "status": "already_logged_in",
+        }));
+    }
+
+    let binary = hermes_binary_path();
+
+    // Spawn the auth process
+    match tokio::process::Command::new(&binary)
+        .args(["auth", "add", "--type", "oauth", "--no-browser", &provider])
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .env("PAGER", "cat")
+        .spawn()
+    {
+        Ok(mut child) => {
+            // Send "n\n" to stdin to decline re-importing existing creds
+            if let Some(mut stdin) = child.stdin.take() {
+                use tokio::io::AsyncWriteExt;
+                let _ = stdin.write_all(b"n\n").await;
+                // Drop stdin to signal EOF
+                drop(stdin);
+            }
+
+            let output = child.wait_with_output().await;
+            match output {
+                Ok(out) => {
+                    let stdout = String::from_utf8_lossy(&out.stdout).to_string();
+                    let stderr = String::from_utf8_lossy(&out.stderr).to_string();
+                    let combined = format!("{}\n{}", stdout, stderr);
+
+                    // Try to find an auth URL in the output
+                    let url_patterns = [
+                        "https://",
+                        "http://localhost",
+                    ];
+                    let mut auth_url: Option<String> = None;
+                    for line in combined.lines() {
+                        let trimmed = line.trim();
+                        if url_patterns.iter().any(|p| trimmed.starts_with(p)) {
+                            auth_url = Some(trimmed.to_string());
+                            break;
+                        }
+                    }
+
+                    // Check if auth was successful (auth.json updated)
+                    let now_logged_in = read_file(&auth_path)
+                        .ok()
+                        .and_then(|c| serde_json::from_str::<serde_json::Value>(&c).ok())
+                        .and_then(|j| j["providers"].as_object().map(|p| p.contains_key(&provider)))
+                        .unwrap_or(false);
+
+                    if now_logged_in {
+                        Json(serde_json::json!({
+                            "success": true,
+                            "provider": provider,
+                            "url": null,
+                            "status": "logged_in",
+                            "output": stdout.trim(),
+                        }))
+                    } else if let Some(url) = auth_url {
+                        Json(serde_json::json!({
+                            "success": true,
+                            "provider": provider,
+                            "url": url,
+                            "status": "awaiting_auth",
+                            "output": stdout.trim(),
+                        }))
+                    } else {
+                        // Could not find URL — try with manual-paste flag
+                        Json(serde_json::json!({
+                            "success": false,
+                            "provider": provider,
+                            "url": null,
+                            "status": "no_url",
+                            "error": "Could not extract auth URL. The provider may not support OAuth or is already configured.",
+                            "stdout": stdout.trim(),
+                            "stderr": stderr.trim(),
+                        }))
+                    }
+                }
+                Err(e) => Json(serde_json::json!({
+                    "success": false,
+                    "error": format!("Auth process failed: {}", e),
+                })),
+            }
+        }
+        Err(e) => Json(serde_json::json!({
+            "success": false,
+            "error": format!("Failed to spawn auth process: {}", e),
+        })),
+    }
+}
+
+/// Login with an API key provider.
+async fn auth_add_api_key(
+    Json(body): Json<serde_json::Value>,
+) -> Json<serde_json::Value> {
+    let provider = body["provider"].as_str().unwrap_or("").to_string();
+    let api_key = body["api_key"].as_str().unwrap_or("").to_string();
+
+    if provider.is_empty() || api_key.is_empty() {
+        return Json(serde_json::json!({
+            "success": false,
+            "error": "provider and api_key are required",
+        }));
+    }
+
+    let binary = hermes_binary_path();
+    match tokio::process::Command::new(&binary)
+        .args(["auth", "add", "--type", "api-key", "--api-key", &api_key, &provider])
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .env("PAGER", "cat")
+        .output()
+        .await
+    {
+        Ok(out) => {
+            let success = out.status.success();
+            let stdout = String::from_utf8_lossy(&out.stdout).to_string();
+            let stderr = String::from_utf8_lossy(&out.stderr).to_string();
+            Json(serde_json::json!({
+                "success": success,
+                "provider": provider,
+                "stdout": stdout.trim(),
+                "stderr": stderr.trim(),
+                "exit_code": out.status.code().unwrap_or(-1),
+            }))
+        }
+        Err(e) => Json(serde_json::json!({
+            "success": false,
+            "error": format!("Failed to add auth: {}", e),
+        })),
+    }
+}
+
+/// Get auth status for all known providers.
+async fn auth_get_status(State(state): State<Arc<AppState>>) -> Json<serde_json::Value> {
+    // Read auth.json to find logged-in providers
+    let auth_path = state.hermes_home.join("auth.json");
+    let logged_in = read_file(&auth_path)
+        .ok()
+        .and_then(|c| serde_json::from_str::<serde_json::Value>(&c).ok())
+        .and_then(|j| j["providers"].as_object().map(|p| {
+            p.iter().map(|(k, v)| {
+                let cred_type = v["type"].as_str().unwrap_or("unknown");
+                (k.clone(), cred_type.to_string())
+            }).collect::<Vec<_>>()
+        }))
+        .unwrap_or_default();
+
+    // Check each known provider via status command
+    let known_providers = vec![
+        "nous", "anthropic", "xai", "xai-oauth", "gemini",
+        "openai-codex", "openrouter", "deepseek", "zai",
+    ];
+
+    let mut providers = Vec::new();
+    for p in &known_providers {
+        let is_logged_in = logged_in.iter().any(|(name, _)| name == p);
+        let cred_type = logged_in.iter()
+            .find(|(name, _)| name == p)
+            .map(|(_, t)| t.as_str())
+            .unwrap_or("none");
+
+        providers.push(serde_json::json!({
+            "name": p,
+            "status": if is_logged_in { "logged_in" } else { "not_logged_in" },
+            "type": cred_type,
+        }));
+    }
+
+    Json(serde_json::json!({
+        "success": true,
+        "providers": providers,
+    }))
+}
+
+/// Log out a provider.
+async fn auth_logout(
+    Path(provider): Path<String>,
+    State(_state): State<Arc<AppState>>,
+) -> Json<serde_json::Value> {
+    let binary = hermes_binary_path();
+    match tokio::process::Command::new(&binary)
+        .args(["auth", "logout", &provider])
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .env("PAGER", "cat")
+        .output()
+        .await
+    {
+        Ok(out) => {
+            let success = out.status.success();
+            Json(serde_json::json!({
+                "success": success,
+                "provider": provider,
+                "stdout": String::from_utf8_lossy(&out.stdout).to_string().trim(),
+                "stderr": String::from_utf8_lossy(&out.stderr).to_string().trim(),
+            }))
+        }
+        Err(e) => Json(serde_json::json!({
+            "success": false,
+            "error": format!("Failed to logout: {}", e),
+        })),
+    }
+}
+
 // ── Server ─────────────────────────────────────────────────────────────────
 
 #[tokio::main]
@@ -2321,6 +3167,9 @@ async fn main() {
         .route("/sessions", get(get_sessions))
         .route("/logs", get(get_logs))
         .route("/gateway", get(get_gateway))
+        .route("/gateway/platforms", get(gateway_get_platforms))
+        .route("/gateway/configure/{platform}", post(gateway_configure_platform))
+        .route("/gateway/service/{action}", post(gateway_service_action))
         .route("/gateway/toggle", post(gateway_toggle))
         .route("/cron", get(get_cron))
         .route("/providers", get(get_providers))
@@ -2340,6 +3189,34 @@ async fn main() {
         .route("/files/list", get(files_list))
         .route("/files/read", get(files_read))
         .route("/files/write", put(files_write))
+        .route("/files/info", get(files_info))
+        .route("/files/delete", post(files_delete))
+        .route("/files/rename", post(files_rename))
+        .route("/files/mkdir", post(files_mkdir))
+        // Auth / Provider Login
+        .route("/auth/status", get(auth_get_status))
+        .route("/auth/login/{provider}", post(auth_start_oauth))
+        .route("/auth/api-key", post(auth_add_api_key))
+        .route("/auth/logout/{provider}", post(auth_logout))
+        // CLI Proxy endpoints (fallback, webhooks, hooks, plugins, curator, MCP, etc.)
+        .route("/cli/fallback", get(cli_fallback_list))
+        .route("/cli/fallback/add", post(cli_fallback_add))
+        .route("/cli/fallback/clear", post(cli_fallback_clear))
+        .route("/cli/webhooks", get(cli_webhook_list))
+        .route("/cli/hooks", get(cli_hooks_list))
+        .route("/cli/plugins", get(cli_plugins_list))
+        .route("/cli/curator", get(cli_curator_status))
+        .route("/cli/mcp", get(cli_mcp_list))
+        .route("/cli/doctor", get(cli_doctor))
+        .route("/cli/security", get(cli_security_audit))
+        .route("/cli/dump", get(cli_dump))
+        .route("/cli/debug", get(cli_debug_share))
+        .route("/cli/backup", post(cli_backup_create))
+        .route("/cli/checkpoints", get(cli_checkpoints_status))
+        .route("/cli/proxy", get(cli_proxy_status))
+        .route("/cli/secrets", get(cli_secrets_status))
+        .route("/cli/pairing", get(cli_pairing_list))
+        .route("/cli/insights", get(cli_insights))
         .layer(CorsLayer::permissive())
         .with_state(state);
 

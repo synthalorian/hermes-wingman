@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../theme/theme_manager.dart';
 import '../../theme/app_theme.dart';
 import '../../services/hermes_service.dart';
@@ -208,10 +210,12 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
   Widget _stepProvider(AppColorScheme scheme) {
     final providers = [
       ['Nous', 'nous', 'Nous Research (OAuth) — recommended for Hermes', true],
-      ['OpenAI', 'openai', 'OpenAI API key — gpt-4o, o3, etc.', false],
       ['Anthropic', 'anthropic', 'Anthropic API key — Claude models', false],
-      ['xAI', 'xai', 'xAI API key — Grok models', false],
-      ['Google', 'google', 'Google AI API key — Gemini models', false],
+      ['xAI', 'xai-oauth', 'xAI (OAuth) — Grok models', true],
+      ['xAI (API)', 'xai', 'xAI API key — Grok models', false],
+      ['Google Gemini', 'gemini', 'Google Gemini API key', false],
+      ['OpenRouter', 'openrouter', 'OpenRouter API key — multi-model', false],
+      ['DeepSeek', 'deepseek', 'DeepSeek API key', false],
       ['Skip', 'skip', 'Set up a provider later', false],
     ];
 
@@ -278,22 +282,51 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
       return;
     }
     if (oauth) {
-      // OAuth providers: launch auth flow via backend
+      // OAuth providers: launch in-app auth flow
       try {
         final backend = context.read<BackendService>();
-        final result = await backend.httpPost('/config/update', {
-          'updates': {
-            'providers.$key.type': 'oauth',
-            'providers.$key.model': key == 'nous' ? 'nous/main' : '$key/grok-2',
+        final result = await backend.loginOAuth(key);
+
+        if (!mounted) return;
+
+        final status = result['status'] as String? ?? '';
+        if (status == 'logged_in' || status == 'already_logged_in') {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content: Text('$name authenticated!', style: TextStyle(color: scheme.text, fontSize: 11)),
+              backgroundColor: scheme.surface,
+              duration: const Duration(seconds: 3),
+            ));
+            setState(() => _step = 2);
           }
-        });
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text('$name provider added! Run: hermes login $key to authenticate', style: TextStyle(color: scheme.text, fontSize: 11)),
-            backgroundColor: scheme.surface,
-            duration: const Duration(seconds: 4),
-          ));
-          setState(() => _step = 2);
+          return;
+        }
+
+        final url = result['url'] as String?;
+        if (url != null && url.isNotEmpty) {
+          final uri = Uri.parse(url);
+          if (await canLaunchUrl(uri)) {
+            await launchUrl(uri, mode: LaunchMode.externalApplication);
+          }
+
+          if (!mounted) return;
+          // Show waiting dialog
+          await _showAuthWaitingDialog(scheme, key, name, backend);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content: Text('$name authenticated!', style: TextStyle(color: scheme.text, fontSize: 11)),
+              backgroundColor: scheme.surface,
+            ));
+            setState(() => _step = 2);
+          }
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content: Text('$name: Could not get auth URL. ${result['stderr'] ?? result['error'] ?? ''}',
+                  style: TextStyle(color: scheme.error, fontSize: 11)),
+              backgroundColor: scheme.surface,
+            ));
+          }
         }
       } catch (e) {
         if (mounted) {
@@ -484,6 +517,93 @@ class _SetupWizardScreenState extends State<SetupWizardScreen> {
         ],
       ],
     );
+  }
+
+  Future<void> _showAuthWaitingDialog(
+      AppColorScheme scheme, String provider, String name, BackendService backend) async {
+    final completer = Completer<void>();
+    Timer? timer;
+    int elapsed = 0;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        timer = Timer.periodic(const Duration(seconds: 2), (_) async {
+          elapsed += 2;
+          if (elapsed > 120) {
+            timer?.cancel();
+            if (ctx.mounted) Navigator.pop(ctx);
+            if (!completer.isCompleted) completer.complete();
+            return;
+          }
+          try {
+            final data = await backend.getAuthStatus();
+            if (!ctx.mounted) return;
+            final providers = data['providers'] as List? ?? [];
+            for (final p in providers) {
+              if (p is Map && p['name'] == provider && p['status'] == 'logged_in') {
+                timer?.cancel();
+                Navigator.pop(ctx);
+                if (!completer.isCompleted) completer.complete();
+                return;
+              }
+            }
+          } catch (_) {}
+          if (ctx.mounted && mounted) {
+            (ctx as dynamic).setState(() {});
+          }
+        });
+
+        return AlertDialog(
+          backgroundColor: scheme.surface.withAlpha(235),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(color: scheme.borderDim.withAlpha(60), width: 0.5),
+          ),
+          content: SizedBox(
+            width: 300,
+            child: StatefulBuilder(
+              builder: (ctx, setInnerState) => Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: 48, height: 48,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: scheme.primary),
+                  ),
+                  const SizedBox(height: 16),
+                  Text('Authenticating with $name',
+                      style: TextStyle(color: scheme.text, fontSize: 14, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 8),
+                  Text(
+                    'A browser window opened for authentication.\nComplete the login in your browser.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: scheme.textDim, fontSize: 11, height: 1.4),
+                  ),
+                  if (elapsed > 10) ...[
+                    const SizedBox(height: 12),
+                    Text('Waiting... (${elapsed}s)',
+                        style: TextStyle(color: scheme.textMuted, fontSize: 10)),
+                  ],
+                  const SizedBox(height: 12),
+                  TextButton(
+                    onPressed: () {
+                      timer?.cancel();
+                      Navigator.pop(ctx);
+                      if (!completer.isCompleted) completer.complete();
+                    },
+                    child: Text('Cancel', style: TextStyle(color: scheme.textMuted, fontSize: 11)),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+
+    return completer.future;
   }
 
   Widget _setupItem(AppColorScheme scheme, IconData icon, String title, String desc) {
