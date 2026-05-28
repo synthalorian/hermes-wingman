@@ -30,16 +30,18 @@ class _GatewaySetupScreenState extends State<GatewaySetupScreen> {
     try {
       final backend = context.read<BackendService>();
       final raw = await backend.httpGetList('/gateway/platforms');
-      if (!mounted) return;
+      if (!mounted) { return; }
       setState(() {
         _platforms = raw.cast<Map<String, dynamic>>();
         _loading = false;
       });
     } catch (e) {
-      if (mounted) setState(() {
-        _error = e.toString();
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _loading = false;
+        });
+      }
     }
     await _checkService();
   }
@@ -48,7 +50,7 @@ class _GatewaySetupScreenState extends State<GatewaySetupScreen> {
     try {
       final backend = context.read<BackendService>();
       final data = await backend.gatewayServiceAction('status');
-      if (!mounted) return;
+      if (!mounted) { return; }
       setState(() => _serviceStatus = data['success'] == true ? 'running' : 'not_running');
     } catch (_) {
       if (mounted) setState(() => _serviceStatus = 'unknown');
@@ -60,7 +62,7 @@ class _GatewaySetupScreenState extends State<GatewaySetupScreen> {
       (p) => p['key'] == key,
       orElse: () => {},
     );
-    if (platform == null || platform.isEmpty) return;
+    if (platform == null || platform.isEmpty) { return; }
 
     final vars = (platform['vars'] as List?)?.cast<Map<String, dynamic>>() ?? [];
     final label = platform['label'] as String? ?? key;
@@ -74,8 +76,10 @@ class _GatewaySetupScreenState extends State<GatewaySetupScreen> {
       controllers[name] = TextEditingController(text: current);
     }
 
-    if (!mounted) return;
+    if (!mounted) { return; }
     final scheme = context.read<ThemeManager>().currentScheme;
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final backendCfg = context.read<BackendService>();
 
     final result = await showDialog<Map<String, String>>(
       context: context,
@@ -181,10 +185,9 @@ class _GatewaySetupScreenState extends State<GatewaySetupScreen> {
 
     if (result != null && result.isNotEmpty) {
       try {
-        final backend = context.read<BackendService>();
-        await backend.configureGatewayPlatform(key, result);
+        await backendCfg.configureGatewayPlatform(key, result);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          scaffoldMessenger.showSnackBar(SnackBar(
             content: Text('$label configured successfully!',
                 style: TextStyle(color: scheme.text, fontSize: 11)),
             backgroundColor: scheme.surface,
@@ -194,7 +197,7 @@ class _GatewaySetupScreenState extends State<GatewaySetupScreen> {
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          scaffoldMessenger.showSnackBar(SnackBar(
             content: Text('Error: $e', style: TextStyle(color: scheme.error, fontSize: 11)),
             backgroundColor: scheme.surface,
           ));
@@ -207,6 +210,7 @@ class _GatewaySetupScreenState extends State<GatewaySetupScreen> {
 
   Future<void> _serviceAction(String action) async {
     setState(() => _serviceLoading = true);
+    final scheme = context.read<ThemeManager>().currentScheme;
     try {
       final backend = context.read<BackendService>();
       await backend.gatewayServiceAction(action);
@@ -214,13 +218,13 @@ class _GatewaySetupScreenState extends State<GatewaySetupScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text('Gateway $action ${action == 'stop' ? 'stopped' : action == 'start' ? 'started' : action}'),
-          backgroundColor: context.read<ThemeManager>().currentScheme.surface,
+          backgroundColor: scheme.surface,
         ));
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Error: $e', style: TextStyle(color: context.read<ThemeManager>().currentScheme.error)),
+          content: Text('Error: $e', style: TextStyle(color: scheme.error)),
         ));
       }
     }
@@ -271,7 +275,14 @@ class _GatewaySetupScreenState extends State<GatewaySetupScreen> {
   }
 
   Widget _buildServiceBar(AppColorScheme scheme) {
-    final statusLabel = _serviceStatus == 'running' ? 'Running' : _serviceStatus == 'not_running' ? 'Stopped' : 'Unknown';
+    final String statusLabel;
+    if (_serviceStatus == 'running') {
+      statusLabel = 'Running';
+    } else if (_serviceStatus == 'not_running') {
+      statusLabel = 'Stopped';
+    } else {
+      statusLabel = 'Unknown';
+    }
     final statusColor = _serviceStatus == 'running' ? scheme.success : scheme.textMuted;
 
     return Container(
@@ -311,12 +322,10 @@ class _GatewaySetupScreenState extends State<GatewaySetupScreen> {
     final label = platform['label'] as String? ?? '';
     final emoji = platform['emoji'] as String? ?? '🔌';
     final status = platform['status'] as String? ?? 'not_configured';
-    final runtimeStatus = platform['runtime_status'] as String? ?? '';
-
     final statusColor = status == 'connected'
         ? scheme.success
         : status == 'error' || status == 'configured'
-            ? scheme.warning ?? scheme.accent
+            ? scheme.warning
             : scheme.textMuted;
     final statusLabel = status == 'connected'
         ? '✓ Connected'

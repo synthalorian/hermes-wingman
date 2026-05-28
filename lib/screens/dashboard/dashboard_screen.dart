@@ -145,7 +145,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _GoldSectionHeader(AppColorScheme scheme, String label) {
+  Widget _goldSectionHeader(AppColorScheme scheme, String label) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Row(
@@ -374,7 +374,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _GoldSectionHeader(scheme, 'QUICK ACTIONS'),
+        _goldSectionHeader(scheme, 'QUICK ACTIONS'),
         Row(
           children: [
             _GlassActionButton(
@@ -422,7 +422,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _GoldSectionHeader(scheme, 'RECENT SESSIONS'),
+        _goldSectionHeader(scheme, 'RECENT SESSIONS'),
         if (_recentSessions.isEmpty)
           GlassCard(
             scheme: scheme,

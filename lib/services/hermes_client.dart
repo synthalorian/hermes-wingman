@@ -89,6 +89,7 @@ class HermesClient implements HermesService {
   }
 
   /// Run a `hermes` CLI command and return stdout.
+  @override
   Future<String> runHermesCommand(List<String> args) async {
     final binary = await _findHermesBinary();
     try {
@@ -116,6 +117,7 @@ class HermesClient implements HermesService {
   }
 
   /// Determine if hermes is installed and accessible.
+  @override
   Future<bool> isHermesAvailable() async {
     if (_discovered) return _hermesPath != null;
     try {
@@ -131,6 +133,7 @@ class HermesClient implements HermesService {
   // ── Status ─────────────────────────────────────────────────────────────
 
   /// Fetch the current status of the Hermes agent.
+  @override
   Future<HermesStatus> getStatus() async {
     final output = await runHermesCommand(['status']);
     final lines = output.split('\n');
@@ -167,6 +170,7 @@ class HermesClient implements HermesService {
   }
 
   /// Get the full status text (raw output) for display.
+  @override
   Future<String> getStatusRaw() async {
     return runHermesCommand(['status']);
   }
@@ -174,6 +178,7 @@ class HermesClient implements HermesService {
   // ── Sessions ───────────────────────────────────────────────────────────
 
   /// List recent sessions from the Hermes session store.
+  @override
   Future<List<HermesSession>> listSessions({int limit = 20}) async {
     try {
       final output = await runHermesCommand(
@@ -239,6 +244,7 @@ class HermesClient implements HermesService {
   }
 
   /// Get the session store stats.
+  @override
   Future<String> getSessionStats() async {
     try {
       return await runHermesCommand(['sessions', 'stats']);
@@ -250,6 +256,7 @@ class HermesClient implements HermesService {
   // ── Config ─────────────────────────────────────────────────────────────
 
   /// Read the entire config.yaml as a string.
+  @override
   Future<String> getConfigRaw() async {
     final home = await hermesHome;
     final configFile = File('$home/config.yaml');
@@ -260,6 +267,7 @@ class HermesClient implements HermesService {
   }
 
   /// Read a specific config value.
+  @override
   Future<String?> getConfigValue(String key) async {
     try {
       // `hermes config get <key>` might not exist, try generic output
@@ -276,6 +284,7 @@ class HermesClient implements HermesService {
   }
 
   /// Set a config value via `hermes config set`.
+  @override
   Future<void> setConfigValue(String key, String value) async {
     await runHermesCommand(['config', 'set', key, value]);
   }
@@ -283,6 +292,7 @@ class HermesClient implements HermesService {
   // ── Logs ───────────────────────────────────────────────────────────────
 
   /// Read the last N lines of agent.log.
+  @override
   Future<List<LogEntry>> readLogs({int lines = 50, String level = 'info'}) async {
     try {
       final args = ['logs'];
@@ -339,6 +349,7 @@ class HermesClient implements HermesService {
   // ── Cron Jobs ──────────────────────────────────────────────────────────
 
   /// List all cron jobs.
+  @override
   Future<List<HermesCronJob>> listCronJobs() async {
     try {
       final output = await runHermesCommand(['cron', 'list']);
@@ -384,6 +395,7 @@ class HermesClient implements HermesService {
   // ── Gateway ────────────────────────────────────────────────────────────
 
   /// Write full config content.
+  @override
   Future<void> writeConfig(String content) async {
     final home = await hermesHome;
     final configFile = File('$home/config.yaml');
@@ -391,6 +403,7 @@ class HermesClient implements HermesService {
   }
 
   /// Get gateway status from gateway_state.json
+  @override
   Future<List<GatewayPlatform>> getGatewayStatus() async {
     try {
       final home = await hermesHome;

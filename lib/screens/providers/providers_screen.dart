@@ -147,7 +147,7 @@ class _ProvidersScreenState extends State<ProvidersScreen> {
   }
 
   Future<void> _handleLogin(_ProviderDef provider) async {
-    if (_authingProvider != null) return;
+    if (_authingProvider != null) { return; }
 
     if (provider.isOAuth) {
       await _startOAuthLogin(provider);
@@ -216,12 +216,13 @@ class _ProvidersScreenState extends State<ProvidersScreen> {
   }
 
   Future<void> _showApiKeyDialog(_ProviderDef provider) async {
-    final scheme = context.read<ThemeManager>().currentScheme;
+    final themeManager = context.read<ThemeManager>();
     final keyCtrl = TextEditingController();
     final modelCtrl = TextEditingController(
       text: provider.defaultModel,
     );
 
+    final scheme = themeManager.currentScheme;
     await showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -280,14 +281,14 @@ class _ProvidersScreenState extends State<ProvidersScreen> {
           TextButton(
             onPressed: () async {
               if (keyCtrl.text.trim().isEmpty) return;
+              final backendProv = context.read<BackendService>();
               try {
-                final backend = context.read<BackendService>();
-                final res = await backend.loginApiKey(provider.name, keyCtrl.text.trim());
+                final res = await backendProv.loginApiKey(provider.name, keyCtrl.text.trim());
                 if (ctx.mounted) Navigator.pop(ctx);
+                await _loadStatus();
                 if (mounted) {
                   if (res['success'] == true) {
                     _showSnack('${provider.shortName}: API key added!');
-                    await _loadStatus();
                   } else {
                     _showSnack('${provider.shortName}: ${res['stderr'] ?? res['error'] ?? 'Failed'}',
                         isError: true);
@@ -309,6 +310,7 @@ class _ProvidersScreenState extends State<ProvidersScreen> {
 
   Future<void> _handleLogout(_ProviderDef provider) async {
     final scheme = context.read<ThemeManager>().currentScheme;
+    final backend = context.read<BackendService>();
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -337,7 +339,6 @@ class _ProvidersScreenState extends State<ProvidersScreen> {
     if (confirmed != true) return;
 
     try {
-      final backend = context.read<BackendService>();
       await backend.logoutProvider(provider.name);
       _showSnack('${provider.shortName}: Logged out');
       await _loadStatus();

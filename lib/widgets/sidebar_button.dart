@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:hermes_wingman/theme/app_theme.dart';
-
 class SidebarButton extends StatelessWidget {
   final IconData icon;
   final String label;

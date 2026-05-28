@@ -2,7 +2,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../theme/theme_manager.dart';
 import '../../theme/app_theme.dart';
 import '../../services/hermes_service.dart';
@@ -54,10 +53,10 @@ class _FilesScreenState extends State<FilesScreen> {
     try {
       final client = context.read<HermesService>();
       final listing = await client.listFiles(path: path);
-      if (!mounted) return;
+      if (!mounted) { return; }
       setState(() { _listing = listing; _loading = false; });
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted) { return; }
       setState(() { _error = e.toString(); _loading = false; });
     }
   }
@@ -68,10 +67,10 @@ class _FilesScreenState extends State<FilesScreen> {
     try {
       final client = context.read<HermesService>();
       final content = await client.readFile(path);
-      if (!mounted) return;
+      if (!mounted) { return; }
       setState(() { _fileContent = content; _loadingFile = false; if (content == null) _fileContentError = 'File is empty or could not be read'; });
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted) { return; }
       setState(() { _fileContentError = e.toString(); _loadingFile = false; });
     }
   }
@@ -89,7 +88,6 @@ class _FilesScreenState extends State<FilesScreen> {
 
   Future<void> _showContextMenu(String name, bool isDir, Offset pos) async {
     final scheme = context.read<ThemeManager>().currentScheme;
-    final full = _fullPath(name);
     final backend = context.read<BackendService>();
 
     final result = await showMenu<String>(
@@ -114,28 +112,44 @@ class _FilesScreenState extends State<FilesScreen> {
       ],
     );
 
-    if (result == null) return;
+    if (result == null) { return; }
 
     switch (result) {
-      case 'open':
+      case 'open': {
         _navigateToDir(name);
-      case 'view':
+        break;
+      }
+      case 'view': {
         _readFile(name);
-      case 'edit':
+        break;
+      }
+      case 'edit': {
         _readFile(name);
-      case 'xdg':
+        break;
+      }
+      case 'xdg': {
         try {
           await Process.run('xdg-open', [_fullPath(name)]);
         } catch (_) {}
-      case 'copy_path':
+        break;
+      }
+      case 'copy_path': {
         Clipboard.setData(ClipboardData(text: _fullPath(name)));
         _showSnack('Path copied: ${_fullPath(name)}', scheme);
-      case 'rename':
+        break;
+      }
+      case 'rename': {
         _showRenameDialog(name, isDir, backend, scheme);
-      case 'duplicate':
+        break;
+      }
+      case 'duplicate': {
         _showDuplicateDialog(name, isDir, backend, scheme);
-      case 'delete':
+        break;
+      }
+      case 'delete': {
         _showDeleteConfirm(name, isDir, backend, scheme);
+        break;
+      }
     }
   }
 
@@ -165,7 +179,7 @@ class _FilesScreenState extends State<FilesScreen> {
         ],
       ),
     );
-    if (newName == null || newName.isEmpty || newName == name) return;
+    if (newName == null || newName.isEmpty || newName == name) { return; }
     try {
       await backend.renameFile(_fullPath(name), newName);
       _loadDirectory(_currentPath);
@@ -209,7 +223,7 @@ class _FilesScreenState extends State<FilesScreen> {
         ],
       ),
     );
-    if (confirmed != true) return;
+    if (confirmed != true) { return; }
     try {
       await backend.deleteFile(_fullPath(name));
       _loadDirectory(_currentPath);
@@ -237,7 +251,7 @@ class _FilesScreenState extends State<FilesScreen> {
         ],
       ),
     );
-    if (name == null || name.isEmpty) return;
+    if (name == null || name.isEmpty) { return; }
     try {
       await backend.createDirectory(_currentPath, name);
       _loadDirectory(_currentPath);
@@ -246,7 +260,7 @@ class _FilesScreenState extends State<FilesScreen> {
   }
 
   void _showSnack(String msg, AppColorScheme scheme, {bool isError = false}) {
-    if (!mounted) return;
+    if (!mounted) { return; }
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(msg, style: TextStyle(color: scheme.text, fontSize: 10)),
       backgroundColor: isError ? scheme.error.withAlpha(200) : scheme.surface,
@@ -334,12 +348,13 @@ class _FilesScreenState extends State<FilesScreen> {
   Widget _buildContent(AppColorScheme s) {
     // File viewer
     if (_viewingFile != null) {
-      if (_loadingFile) return const Center(child: CircularProgressIndicator(strokeWidth: 1.5));
-      if (_fileContentError != null) return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+      if (_loadingFile) { return const Center(child: CircularProgressIndicator(strokeWidth: 1.5)); }
+      if (_fileContentError != null) { return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
         Icon(Icons.description_outlined, size: 36, color: s.error.withAlpha(150)), const SizedBox(height: 12),
         Text('Could not read', style: TextStyle(color: s.textDim, fontSize: 13)),
         const SizedBox(height: 6), Text(_fileContentError!, style: TextStyle(color: s.textMuted, fontSize: 10, fontFamily: 'monospace'), textAlign: TextAlign.center),
       ]));
+      }
       return Padding(padding: const EdgeInsets.all(24), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Container(width: double.infinity, padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(color: s.surfaceAlt, borderRadius: BorderRadius.circular(6), border: Border.all(color: s.borderDim, width: 0.5)),
@@ -354,22 +369,28 @@ class _FilesScreenState extends State<FilesScreen> {
         Expanded(child: Container(width: double.infinity, padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(color: s.background, borderRadius: BorderRadius.circular(8), border: Border.all(color: s.borderDim, width: 0.5)),
           child: SingleChildScrollView(child: SingleChildScrollView(scrollDirection: Axis.horizontal,
-            child: Text(_fileContent ?? '(empty)', style: TextStyle(color: s.text, fontSize: 11, fontFamily: 'monospace', height: 1.6))))),
+            child: Text(_fileContent!, style: TextStyle(color: s.text, fontSize: 11, fontFamily: 'monospace', height: 1.6))))),
         ),
       ]));
     }
 
     // Directory listing
-    if (_loading) return const Center(child: CircularProgressIndicator(strokeWidth: 1.5));
-    if (_error != null) return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-      Icon(Icons.folder_off_outlined, size: 40, color: s.error.withAlpha(150)), const SizedBox(height: 12),
-      Text('Could not load', style: TextStyle(color: s.textDim, fontSize: 14)), const SizedBox(height: 6),
-      Text(_error!, style: TextStyle(color: s.textMuted, fontSize: 10, fontFamily: 'monospace'), textAlign: TextAlign.center),
-    ]));
-    if (_listing.directories.isEmpty && _listing.files.isEmpty) return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-      Icon(Icons.folder_open_outlined, size: 36, color: s.textMuted), const SizedBox(height: 10),
-      Text('Empty directory', style: TextStyle(color: s.textDim, fontSize: 13)),
-    ]));
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator(strokeWidth: 1.5));
+    }
+    if (_error != null) {
+      return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+        Icon(Icons.folder_off_outlined, size: 40, color: s.error.withAlpha(150)), const SizedBox(height: 12),
+        Text('Could not load', style: TextStyle(color: s.textDim, fontSize: 14)), const SizedBox(height: 6),
+        Text(_error!, style: TextStyle(color: s.textMuted, fontSize: 10, fontFamily: 'monospace'), textAlign: TextAlign.center),
+      ]));
+    }
+    if (_listing.directories.isEmpty && _listing.files.isEmpty) {
+      return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+        Icon(Icons.folder_open_outlined, size: 36, color: s.textMuted), const SizedBox(height: 10),
+        Text('Empty directory', style: TextStyle(color: s.textDim, fontSize: 13)),
+      ]));
+    }
 
     return Padding(padding: const EdgeInsets.all(24), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Container(width: double.infinity, padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -425,7 +446,7 @@ class _FileEntry extends StatelessWidget {
           ),
           child: Row(children: [
             Icon(isDirectory ? Icons.folder_outlined : Icons.insert_drive_file_outlined,
-                size: 16, color: isDirectory ? scheme.warning ?? scheme.accent : scheme.textDim),
+                size: 16, color: isDirectory ? scheme.warning : scheme.textDim),
             const SizedBox(width: 10),
             Expanded(child: Text(name, style: TextStyle(color: scheme.text, fontSize: 12, fontFamily: 'monospace'))),
             GestureDetector(

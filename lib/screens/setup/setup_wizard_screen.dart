@@ -5,7 +5,6 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../theme/theme_manager.dart';
 import '../../theme/app_theme.dart';
-import '../../services/hermes_service.dart';
 import '../../services/hermes_api_client.dart' show BackendService, BackendConnectionState;
 import '../../services/wingman_settings.dart';
 

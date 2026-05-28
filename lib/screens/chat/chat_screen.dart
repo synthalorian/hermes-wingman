@@ -46,6 +46,11 @@ class _ChatScreenState extends State<ChatScreen> {
   String? get _resumedSessionId => context.read<ChatManager>().resumeSessionId;
   String? get _resumedSessionTitle => context.read<ChatManager>().resumeSessionTitle;
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+  }
+
   Future<void> _loadVersion() async {
     try {
       final client = context.read<HermesService>();
@@ -1143,14 +1148,13 @@ class _GlassSessionRow extends StatelessWidget {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            '${session.id.length > 16 ? '...${session.id.substring(session.id.length - 16)}' : session.id}',
+                            session.id.length > 16 ? '...${session.id.substring(session.id.length - 16)}' : session.id,
                             style: TextStyle(color: scheme.textMuted, fontSize: 9, fontFamily: 'monospace'),
                           ),
                         ],
                       ),
                     ),
-                    Text(
-                      '${session.messageCount} msgs',
+                    Text(                          '${session.messageCount} msgs',
                       style: TextStyle(color: scheme.textMuted, fontSize: 9, fontFamily: 'monospace'),
                     ),
                     const SizedBox(width: 8),
