@@ -63,9 +63,9 @@ bin/rails server -b 0.0.0.0 -p 3000
 
 **Key pattern:** Every screen uses `context.watch<ThemeManager>().currentScheme` for theme colors. Every widget accepts `AppColorScheme scheme` as a parameter.
 
-### Rust Backend (`hermes_wingman/backend/src/main.rs`)
+### Rust Backend (`hermes_wingman/backend/src/`)
 
-A 2,350+ line Axum HTTP server with 40+ API endpoints. Handles:
+A modular Axum HTTP server (24 files) with 40+ API endpoints spread across 12 handler modules. Handles:
 - Direct API calls to providers (OpenAI, Anthropic, llama-swap, etc.)
 - Hermes CLI fallback for OAuth providers
 - File system operations, config management

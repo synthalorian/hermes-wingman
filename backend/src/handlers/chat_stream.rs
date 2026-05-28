@@ -5,7 +5,7 @@ use std::sync::Arc;
 use serde::{Deserialize};
 use crate::state::AppState;
 use crate::platform::{hermes_binary_path, run_hermes};
-use crate::helpers::{read_config, load_soul_md, oauth_providers, get_active_model, build_chat_messages, read_file};
+use crate::helpers::{read_config, oauth_providers, get_active_model, build_chat_messages, read_file};
 use crate::handlers::setup::strip_think_tags_stream;
 use futures::Stream;
 
@@ -19,7 +19,7 @@ pub async fn chat_stream_handler(
     State(state): State<Arc<AppState>>,
     Query(query): Query<ChatStreamQuery>,
 ) -> Sse<impl Stream<Item = Result<Event, std::convert::Infallible>>> {
-    use std::convert::Infallible;
+    
     use tokio::sync::mpsc;
     use tokio_stream::wrappers::ReceiverStream;
 

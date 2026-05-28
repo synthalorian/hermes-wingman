@@ -1,16 +1,15 @@
-use axum::{extract::{Query, State}, http::StatusCode, response::Json, routing::put};
+use axum::{extract::{Query, State}, response::Json};
 use std::sync::Arc;
 use std::path::PathBuf;
 use serde::{Deserialize};
 use crate::state::AppState;
-use crate::platform::{hermes_home_dir, run_hermes};
 
 // ── File Operations ─────────────────────────────────────────────────────────
 
 /// Resolve a filesystem path, allowing navigation outside ~/.hermes.
 /// If the path starts with '/', use it as-is (absolute path).
 /// Otherwise, resolve relative to the user's HOME.
-pub fn resolve_fs_path(state: &AppState, relative_path: &str) -> PathBuf {
+pub fn resolve_fs_path(_state: &AppState, relative_path: &str) -> PathBuf {
     let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".into());
     if relative_path.starts_with('/') {
         // Absolute path — use as-is (filesystem-wide access)
@@ -28,7 +27,7 @@ pub fn resolve_fs_path(state: &AppState, relative_path: &str) -> PathBuf {
 }
 
 #[derive(Deserialize)]
-struct FileListQuery {
+pub struct FileListQuery {
     path: Option<String>,
 }
 
@@ -70,7 +69,7 @@ pub async fn files_list(
 }
 
 #[derive(Deserialize)]
-struct FileReadQuery {
+pub struct FileReadQuery {
     path: String,
 }
 
@@ -106,7 +105,7 @@ pub async fn files_read(
 }
 
 #[derive(Deserialize)]
-struct FileWriteBody {
+pub struct FileWriteBody {
     path: String,
     content: String,
 }
@@ -135,7 +134,7 @@ pub async fn files_write(
 // ── File Operations (Info, Delete, Rename, Mkdir) ────────────────────────
 
 #[derive(Deserialize)]
-struct FileQuery {
+pub struct FileQuery {
     path: String,
 }
 
@@ -192,7 +191,7 @@ pub async fn files_delete(
 }
 
 #[derive(Deserialize)]
-struct FileRenameBody {
+pub struct FileRenameBody {
     path: String,
     new_name: String,
 }
@@ -214,7 +213,7 @@ pub async fn files_rename(
 }
 
 #[derive(Deserialize)]
-struct FileMkdirBody {
+pub struct FileMkdirBody {
     path: String,
     name: String,
 }

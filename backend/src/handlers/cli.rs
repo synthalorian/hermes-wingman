@@ -1,11 +1,11 @@
 use serde::Deserialize;
-use axum::{http::StatusCode, response::Json};
+use axum::response::Json;
 use crate::platform::run_hermes;
 
 // ── Generic Hermes Command Runner ────────────────────────────────────────────
 
 #[derive(Deserialize)]
-struct HermesCommandBody {
+pub struct HermesCommandBody {
     args: Vec<String>,
 }
 
