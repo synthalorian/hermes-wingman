@@ -1,11 +1,11 @@
 use axum::{extract::State, http::StatusCode, response::Json};
 use std::sync::Arc;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use crate::state::AppState;
-use crate::platform::{hermes_binary_path, hermes_home_dir, run_hermes};
+use crate::platform::{hermes_binary_path, hermes_home_dir};
 use crate::helpers::{read_config, read_file, get_active_model};
 use std::process::Command;
-use crate::models::{discover_models, probe_model_via_curl, ModelEntry, ModelsResponse};
+use crate::models::{discover_models, probe_model_via_curl, ModelsResponse};
 use crate::chat::{handle_chat, ChatRequest, ChatResponse};
 
 // ── HTTP Handlers ──────────────────────────────────────────────────────────
@@ -120,7 +120,7 @@ pub async fn get_models(State(state): State<Arc<AppState>>) -> Json<ModelsRespon
 }
 
 #[derive(Deserialize)]
-struct SwitchModelRequest {
+pub struct SwitchModelRequest {
     model: String,
 }
 
@@ -147,7 +147,7 @@ pub async fn switch_model(
 }
 
 #[derive(Deserialize)]
-struct ProbeRequest {
+pub struct ProbeRequest {
     model: String,
 }
 

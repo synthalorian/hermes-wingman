@@ -1,11 +1,11 @@
-use axum::{extract::{Path, State}, http::StatusCode, response::Json};
+use axum::{extract::{Path, State}, response::Json};
 use std::sync::Arc;
 use std::path::PathBuf;
 use std::process::Command;
 use serde::{Deserialize};
 use crate::state::AppState;
-use crate::platform::{hermes_home_dir, hermes_binary_path, find_hermes_binary, run_hermes};
-use crate::helpers::{read_config, read_file, oauth_providers, classify_provider, ProviderType};
+use crate::platform::{hermes_binary_path, find_hermes_binary, run_hermes};
+use crate::helpers::{read_config, read_file, classify_provider};
 
 // ── Gateway Platforms ───────────────────────────────────────────────────────
 
@@ -496,7 +496,7 @@ pub async fn detect_setup(State(state): State<Arc<AppState>>) -> Json<serde_json
 }
 
 #[derive(Deserialize)]
-struct InstallRequest {
+pub struct InstallRequest {
     method: Option<String>,
 }
 

@@ -1,10 +1,7 @@
-use axum::{extract::State, http::StatusCode, response::Json};
+use axum::{extract::State, response::Json};
 use std::sync::Arc;
-use std::net::TcpStream;
-use std::time::Duration;
-use serde::{Deserialize};
 use crate::state::AppState;
-use crate::platform::{hermes_home_dir, hermes_binary_path, run_hermes};
+use crate::platform::run_hermes;
 use crate::helpers::{read_config, read_file, oauth_providers};
 
 // Re-export detect_setup and install_hermes from gateway.rs so main.rs routes work

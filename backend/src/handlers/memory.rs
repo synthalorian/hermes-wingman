@@ -1,8 +1,5 @@
-use axum::{extract::{Path, State}, http::StatusCode, response::Json, routing::delete};
-use std::sync::Arc;
-use std::path::PathBuf;
+use axum::response::Json;
 use serde::{Deserialize};
-use crate::state::AppState;
 use crate::platform::{hermes_home_dir, run_hermes};
 use crate::helpers::read_file;
 

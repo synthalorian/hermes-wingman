@@ -16,7 +16,7 @@
   <img src="https://img.shields.io/badge/web-Rails%208-CC0000" alt="Rails">
   <img src="https://img.shields.io/badge/backend-Rust-orange" alt="Rust">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
-  <img src="https://img.shields.io/badge/version-0.1.4-red" alt="Version">
+  <img src="https://img.shields.io/badge/version-1.0.0-red" alt="Version">
 </p>
 
 ---
@@ -251,8 +251,12 @@ hermes_wingman/                    # Flutter + Rust monorepo
 │   ├── services/                  # BackendService, HermesClient, ChatManager
 │   ├── models/                    # Hermes data models
 │   └── widgets/                   # WingmanIcon, reusable components
-├── backend/                       # Rust Axum server
-│   └── src/main.rs                # 2,350+ line backend with 40+ API endpoints
+├── backend/                       # Rust Axum server (24 modular files)
+│   ├── src/main.rs                # Entry point
+│   ├── src/handlers/              # 12 handler modules (auth, chat, config, cron, files, gateway, logs, memory, metrics, models, providers, sessions, setup, skills)
+│   ├── src/state.rs               # Shared application state
+│   ├── src/models.rs              # Request/response data models
+│   └── src/middleware.rs          # HTTP middleware
 ├── android/                       # Android platform files
 ├── ios/                           # iOS platform files
 ├── linux/                         # Linux platform files
