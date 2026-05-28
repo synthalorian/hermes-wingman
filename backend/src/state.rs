@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::Arc;
-use tokio::sync::{Mutex, oneshot};
+use std::sync::{Arc, Mutex};
+use tokio::sync::oneshot;
 use crate::platform::hermes_home_dir;
 
 // ── State ─────────────────────────────────────────────────────────────────
@@ -15,7 +15,7 @@ pub struct AppState {
     pub override_model: Arc<Mutex<Option<String>>>,
     /// Tracks running OAuth login processes.
     /// Map of provider name -> oneshot sender for the auth URL.
-    auth_urls: Arc<Mutex<HashMap<String, oneshot::Sender<String>>>>,
+    auth_urls: Arc<tokio::sync::Mutex<HashMap<String, oneshot::Sender<String>>>>,
 }
 
 impl AppState {
@@ -23,7 +23,7 @@ impl AppState {
         Self {
             hermes_home: hermes_home_dir(),
             override_model: Arc::new(Mutex::new(None)),
-            auth_urls: Arc::new(Mutex::new(HashMap::new())),
+            auth_urls: Arc::new(tokio::sync::Mutex::new(HashMap::new())),
         }
     }
 

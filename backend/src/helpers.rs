@@ -1,10 +1,7 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::path::PathBuf;
-use std::time::Duration;
-use std::net::TcpStream;
 use crate::platform::{hermes_home_dir, run_hermes};
 use crate::state::AppState;
-use serde::{Serialize, Deserialize};
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 

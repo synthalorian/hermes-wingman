@@ -1,10 +1,9 @@
-use axum::{extract::{Path, State}, http::StatusCode, response::Json};
+use axum::{extract::{Path, State}, response::Json};
 use std::sync::Arc;
-use std::collections::HashMap;
 use serde::Deserialize;
 use crate::state::AppState;
-use crate::platform::{hermes_home_dir, hermes_binary_path};
-use crate::helpers::{read_file, oauth_providers};
+use crate::platform::hermes_binary_path;
+use crate::helpers::read_file;
 
 // ── Auth / Provider Login ───────────────────────────────────────────────────
 
