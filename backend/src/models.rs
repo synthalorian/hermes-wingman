@@ -7,18 +7,18 @@ use crate::platform::{hermes_home_dir, run_hermes};
 
 #[derive(Serialize)]
 pub struct ModelEntry {
-    name: String,
-    source: String,  // "local", "fallback", "cloud"
-    provider_name: String,
+    pub name: String,
+    pub source: String,  // "local", "fallback", "cloud"
+    pub provider_name: String,
 }
 
 #[derive(Serialize)]
 pub struct ModelsResponse {
-    local: Vec<ModelEntry>,
-    cloud: Vec<ModelEntry>,
-    fallback: Vec<String>,
-    current: String,
-    provider: String,
+    pub local: Vec<ModelEntry>,
+    pub cloud: Vec<ModelEntry>,
+    pub fallback: Vec<String>,
+    pub current: String,
+    pub provider: String,
 }
 
 pub async fn discover_models() -> ModelsResponse {

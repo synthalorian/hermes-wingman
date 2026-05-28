@@ -8,11 +8,11 @@ use crate::platform::hermes_home_dir;
 
 #[derive(Clone)]
 pub struct AppState {
-    hermes_home: PathBuf,
+    pub hermes_home: PathBuf,
     /// In-memory model override — set by Wingman's model switcher.
     /// When Some, all chat requests use this model instead of config.yaml's `model:`.
     /// When None, falls back to config.yaml.
-    override_model: Arc<Mutex<Option<String>>>,
+    pub override_model: Arc<Mutex<Option<String>>>,
     /// Tracks running OAuth login processes.
     /// Map of provider name -> oneshot sender for the auth URL.
     auth_urls: Arc<Mutex<HashMap<String, oneshot::Sender<String>>>>,

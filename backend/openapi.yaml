@@ -1,0 +1,630 @@
+openapi: 3.0.3
+info:
+  title: Hermes Wingman Backend API
+  description: REST API for the Hermes Wingman cross-platform GUI. Serves the Flutter desktop/mobile app and the Rails web dashboard.
+  version: 1.0.0
+  contact:
+    name: Hermes Wingman
+servers:
+  - url: http://127.0.0.1:9120
+    description: Local Rust backend
+
+tags:
+  - name: Health
+  - name: Config
+  - name: Models
+  - name: Chat
+  - name: Sessions
+  - name: Logs
+  - name: Gateway
+  - name: Cron
+  - name: Providers
+  - name: Setup
+  - name: Skills
+  - name: Memory
+  - name: Files
+  - name: CLI
+  - name: Auth
+  - name: Metrics
+
+paths:
+  # ── Health ─────────────────────────────────────────────────────────────
+  /health:
+    get:
+      tags: [Health]
+      summary: Health check
+      responses:
+        "200":
+          description: Backend health status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: ok }
+
+  # ── Config ─────────────────────────────────────────────────────────────
+  /config:
+    get:
+      tags: [Config]
+      summary: Read Hermes YAML config
+      responses:
+        "200":
+          description: Config object
+          content:
+            application/json:
+              schema: { type: object }
+
+  /config/write:
+    post:
+      tags: [Config]
+      summary: Write full config file
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                content: { type: string }
+      responses:
+        "200": { description: Config written }
+
+  /config/update:
+    post:
+      tags: [Config]
+      summary: Patch config values
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                updates: { type: object }
+      responses:
+        "200": { description: Config updated }
+
+  /config/validate:
+    post:
+      tags: [Config]
+      summary: Validate config schema
+      responses:
+        "200": { description: Validation result }
+
+  # ── Models ─────────────────────────────────────────────────────────────
+  /models:
+    get:
+      tags: [Models]
+      summary: List available models
+      responses:
+        "200":
+          description: Models list with current active model
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  current: { type: string }
+                  models:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name: { type: string }
+                        provider: { type: string }
+                        available: { type: boolean }
+
+  /models/switch:
+    post:
+      tags: [Models]
+      summary: Switch active model
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                model: { type: string }
+      responses:
+        "200": { description: Switch result }
+
+  /models/probe:
+    post:
+      tags: [Models]
+      summary: Probe a model for availability
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                model: { type: string }
+      responses:
+        "200": { description: Probe result with status and error }
+
+  # ── Chat ───────────────────────────────────────────────────────────────
+  /chat:
+    post:
+      tags: [Chat]
+      summary: Synchronous chat
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message: { type: string }
+                session_id: { type: string }
+      responses:
+        "200":
+          description: Chat response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  response: { type: string }
+                  model: { type: string }
+                  tokens_used: { type: integer }
+
+  /chat/stream:
+    get:
+      tags: [Chat]
+      summary: Server-Sent Events streaming chat
+      parameters:
+        - name: message
+          in: query
+          required: true
+          schema: { type: string }
+        - name: session_id
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: SSE stream of tokens
+          content:
+            text/event-stream:
+              schema: { type: string }
+
+  # ── Sessions ───────────────────────────────────────────────────────────
+  /sessions:
+    get:
+      tags: [Sessions]
+      summary: List chat sessions
+      parameters:
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20 }
+      responses:
+        "200":
+          description: Session list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sessions:
+                    type: array
+                    items: { type: object }
+
+  # ── Logs ───────────────────────────────────────────────────────────────
+  /logs:
+    get:
+      tags: [Logs]
+      summary: Read system logs
+      parameters:
+        - name: lines
+          in: query
+          schema: { type: integer, default: 50 }
+        - name: level
+          in: query
+          schema: { type: string, enum: [all, info, warning, error, debug] }
+      responses:
+        "200":
+          description: Log entries
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  entries:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        timestamp: { type: string }
+                        level: { type: string }
+                        message: { type: string }
+
+  # ── Gateway ────────────────────────────────────────────────────────────
+  /gateway:
+    get:
+      tags: [Gateway]
+      summary: Get gateway status
+      responses:
+        "200": { description: Gateway status object }
+
+  /gateway/toggle:
+    post:
+      tags: [Gateway]
+      summary: Enable/disable gateway
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                action: { type: string, enum: [enable, disable] }
+      responses:
+        "200": { description: Toggle result }
+
+  /gateway/platforms:
+    get:
+      tags: [Gateway]
+      summary: List gateway platforms
+      responses:
+        "200": { description: Platform list }
+
+  /gateway/configure/{platform}:
+    post:
+      tags: [Gateway]
+      summary: Configure a gateway platform
+      parameters:
+        - name: platform
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                vars: { type: object }
+      responses:
+        "200": { description: Configuration result }
+
+  /gateway/service/{action}:
+    post:
+      tags: [Gateway]
+      summary: Gateway service action
+      parameters:
+        - name: action
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: Service action result }
+
+  # ── Cron ───────────────────────────────────────────────────────────────
+  /cron:
+    get:
+      tags: [Cron]
+      summary: List cron jobs
+      responses:
+        "200": { description: Cron job list }
+
+  # ── Providers ──────────────────────────────────────────────────────────
+  /providers:
+    get:
+      tags: [Providers]
+      summary: List AI providers
+      responses:
+        "200": { description: Provider list }
+
+  /setup/probe-provider:
+    post:
+      tags: [Providers]
+      summary: Probe a provider configuration
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                api_key: { type: string }
+                base_url: { type: string }
+      responses:
+        "200": { description: Probe result }
+
+  # ── Setup ──────────────────────────────────────────────────────────────
+  /setup/detect:
+    get:
+      tags: [Setup]
+      summary: Detect Hermes installation status
+      responses:
+        "200":
+          description: Setup detection result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  hermes_installed: { type: boolean }
+                  config_exists: { type: boolean }
+                  version: { type: string }
+
+  /setup/install:
+    post:
+      tags: [Setup]
+      summary: Install Hermes
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                method: { type: string, default: pip }
+      responses:
+        "200": { description: Install result }
+
+  /setup/auto-configure:
+    post:
+      tags: [Setup]
+      summary: Auto-detect and configure providers
+      responses:
+        "200": { description: Auto-configure result }
+
+  # ── Skills ─────────────────────────────────────────────────────────────
+  /hermes/version:
+    get:
+      tags: [Skills]
+      summary: Get Hermes CLI version
+      responses:
+        "200": { description: Version info }
+
+  /hermes/update:
+    post:
+      tags: [Skills]
+      summary: Update Hermes CLI
+      responses:
+        "200": { description: Update result }
+
+  /hermes/skills:
+    get:
+      tags: [Skills]
+      summary: List skills
+      responses:
+        "200": { description: Skills list }
+
+  /hermes/skills/{name}/toggle:
+    post:
+      tags: [Skills]
+      summary: Toggle a skill on/off
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                action: { type: string, default: toggle }
+      responses:
+        "200": { description: Toggle result }
+
+  /hermes/command:
+    post:
+      tags: [CLI]
+      summary: Run a Hermes CLI command
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                args: { type: array, items: { type: string } }
+      responses:
+        "200": { description: Command output }
+
+  # ── Memory ─────────────────────────────────────────────────────────────
+  /memory:
+    get:
+      tags: [Memory]
+      summary: List memory entries
+      responses:
+        "200": { description: Memory list }
+
+  /memory/{id}:
+    get:
+      tags: [Memory]
+      summary: Get memory entry
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: Memory entry }
+    delete:
+      tags: [Memory]
+      summary: Delete memory entry
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: Delete result }
+
+  /memory/search:
+    post:
+      tags: [Memory]
+      summary: Search memory
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                query: { type: string }
+      responses:
+        "200": { description: Search results }
+
+  # ── Files ──────────────────────────────────────────────────────────────
+  /files/list:
+    get:
+      tags: [Files]
+      summary: List files in a directory
+      parameters:
+        - name: path
+          in: query
+          schema: { type: string, default: "" }
+      responses:
+        "200": { description: File list }
+
+  /files/read:
+    get:
+      tags: [Files]
+      summary: Read a file
+      parameters:
+        - name: path
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: File contents }
+
+  /files/write:
+    post:
+      tags: [Files]
+      summary: Write a file
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                path: { type: string }
+                content: { type: string }
+      responses:
+        "200": { description: Write result }
+
+  /files/info:
+    get:
+      tags: [Files]
+      summary: Get file metadata
+      parameters:
+        - name: path
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: File info }
+
+  /files/delete:
+    post:
+      tags: [Files]
+      summary: Delete a file
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                path: { type: string }
+      responses:
+        "200": { description: Delete result }
+
+  /files/rename:
+    post:
+      tags: [Files]
+      summary: Rename a file
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                path: { type: string }
+                new_name: { type: string }
+      responses:
+        "200": { description: Rename result }
+
+  /files/mkdir:
+    post:
+      tags: [Files]
+      summary: Create a directory
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                path: { type: string }
+                name: { type: string }
+      responses:
+        "200": { description: Create result }
+
+  # ── Auth ─────────────────────────────────────────────────────────────────
+  /auth/status:
+    get:
+      tags: [Auth]
+      summary: Get auth status
+      responses:
+        "200": { description: Auth status }
+
+  /auth/login/{provider}:
+    post:
+      tags: [Auth]
+      summary: Start OAuth login
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: OAuth redirect URL }
+
+  /auth/api-key:
+    post:
+      tags: [Auth]
+      summary: Add API key
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                provider: { type: string }
+                api_key: { type: string }
+      responses:
+        "200": { description: Key added }
+
+  /auth/logout/{provider}:
+    post:
+      tags: [Auth]
+      summary: Logout from provider
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: Logout result }
+
+  # ── Metrics / Admin ──────────────────────────────────────────────────────
+  /metrics:
+    get:
+      tags: [Metrics]
+      summary: Backend metrics
+      responses:
+        "200": { description: Metrics data }
+
+  /restart:
+    post:
+      tags: [Metrics]
+      summary: Restart backend
+      responses:
+        "200": { description: Restart initiated }
+
+components:
+  schemas: {}

@@ -1,7 +1,4 @@
 use axum::{
-    extract::{Path, Query, State},
-    http::StatusCode,
-    response::{Json, Sse},
     routing::{delete, get, post, put},
     Router,
 };
@@ -16,13 +13,7 @@ mod chat;
 mod handlers;
 mod middleware;
 
-use platform::{hermes_binary_path, hermes_home_dir, run_hermes};
 use state::AppState;
-use helpers::{read_config, read_file, load_soul_md, oauth_providers, get_active_model, build_chat_messages, classify_provider, ProviderType, universal_cloud_catalog};
-use models::{discover_models, probe_model_via_curl, probe_via_provider, ModelEntry, ModelsResponse};
-use chat::{handle_chat, ChatRequest, ChatResponse};
-use handlers::*;
-use middleware::log_requests;
 
 #[tokio::main]
 async fn main() {
@@ -50,7 +41,6 @@ async fn main() {
         .route("/providers", get(handlers::providers::get_providers))
         .route("/setup/detect", get(handlers::setup::detect_setup))
         .route("/setup/install", post(handlers::setup::install_hermes))
-        .route("/setup/auto-configure", post(handlers::setup::auto_configure))
         .route("/setup/auto-configure", post(handlers::setup::auto_configure))
         .route("/setup/probe-provider", post(handlers::providers::probe_provider_handler))
         .route("/hermes/version", get(handlers::skills::hermes_version))
@@ -94,7 +84,7 @@ async fn main() {
         .route("/metrics", get(handlers::metrics::get_metrics))
         .route("/backend/restart", post(handlers::metrics::restart_backend))
         .layer(CorsLayer::permissive())
-        .layer(middleware::log_requests())
+        .layer(axum::middleware::from_fn(middleware::log_requests))
         .with_state(state);
 
     let addr = "127.0.0.1:9120";
