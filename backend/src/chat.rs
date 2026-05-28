@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
-use crate::helpers::{read_config, load_soul_md, oauth_providers, get_active_model};
-use crate::platform::{hermes_binary_path, run_hermes};
+use crate::helpers::{read_config, load_soul_md, oauth_providers};
+use crate::platform::run_hermes;
 
 // ─── Chat ──────────────────────────────────────────────────────────────────
 

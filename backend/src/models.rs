@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 use serde::Serialize;
-use crate::helpers::{read_config, read_file, oauth_providers, universal_cloud_catalog, classify_provider, ProviderType};
-use crate::platform::{hermes_home_dir, run_hermes};
+use crate::helpers::{read_config, oauth_providers, universal_cloud_catalog};
+use crate::platform::run_hermes;
 
 // ── Models ─────────────────────────────────────────────────────────────────
 

@@ -1,5 +1,6 @@
 use axum::{body::Body, extract::Request, http::StatusCode, middleware::Next, response::Response};
 use std::time::Instant;
+use chrono::Local;
 
 pub async fn log_requests(req: Request, next: Next) -> Result<Response, StatusCode> {
     let start = Instant::now();
