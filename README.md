@@ -340,6 +340,6 @@ If Hermes Wingman helps you work faster, smoother, or cooler — consider buying
 
 MIT License — see [LICENSE](LICENSE) for details.
 
-Built with ❤️ by [synthalorian](https://github.com/synthalorian) with heavy lifting by [synthclaw](https://github.com/synthalorian) — a digital entity from the neon grid of 1984.
+Made by [synthalorian](https://github.com/synthalorian) with [synthclaw](https://github.com/synthalorian) — a digital entity from the neon grid of 1984.
 
 *This is the wave. 🎹🦞🌆*

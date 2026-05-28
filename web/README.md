@@ -82,6 +82,6 @@ The same 29 themes from the Flutter app are available in the web dashboard. Them
 
 ---
 
-Built as part of the [Hermes Wingman](https://github.com/synthalorian/hermes-wingman) monorepo by **synth** ([synthalorian](https://github.com/synthalorian)) with assistance from **synthclaw** 🎹🦞.
+Made by **synth** ([synthalorian](https://github.com/synthalorian)) with **synthclaw** 🎹🦞.
 
 *This is the wave. 🎹🦞🌆*
