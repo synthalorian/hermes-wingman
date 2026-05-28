@@ -317,7 +317,7 @@ class HermesApiService
 
   private
 
-  def self.post(path, body = {})
+  def self.request(method, path, body = nil)
     uri = URI("#{BASE_URL}#{path}")
 
     http = Net::HTTP.new(uri.host, uri.port)
@@ -325,72 +325,49 @@ class HermesApiService
     http.read_timeout = TIMEOUT
     http.continue_timeout = nil
 
-    request = Net::HTTP::Post.new(uri.request_uri)
-    request["Content-Type"] = "application/json"
-    request["Accept"] = "application/json"
-    request.body = body.to_json
-
-    response = http.start do |conn|
-      conn.request(request)
+    case method
+    when :get
+      uri.query = URI.encode_www_form(body) if body&.any?
+      response = Net::HTTP.get_response(uri)
+    when :post
+      req = Net::HTTP::Post.new(uri.request_uri)
+      req["Content-Type"] = "application/json"
+      req["Accept"] = "application/json"
+      req.body = (body || {}).to_json
+      response = http.start { |conn| conn.request(req) }
+    when :put
+      req = Net::HTTP::Put.new(uri.request_uri)
+      req["Content-Type"] = "application/json"
+      req["Accept"] = "application/json"
+      req.body = (body || {}).to_json
+      response = http.start { |conn| conn.request(req) }
+    when :delete
+      req = Net::HTTP::Delete.new(uri.request_uri)
+      req["Accept"] = "application/json"
+      response = http.start { |conn| conn.request(req) }
+    else
+      raise ArgumentError, "Unsupported HTTP method: #{method}"
     end
-
-    parse_response(response, path)
-  end
-
-  def self.delete_request(path)
-    uri = URI("#{BASE_URL}#{path}")
-
-    http = Net::HTTP.new(uri.host, uri.port)
-    http.open_timeout = 5
-    http.read_timeout = TIMEOUT
-    http.continue_timeout = nil
-
-    request = Net::HTTP::Delete.new(uri.request_uri)
-    request["Accept"] = "application/json"
-
-    response = http.start do |conn|
-      conn.request(request)
-    end
-
-    parse_response(response, path)
-  end
-
-  def self.put_request(path, body = {})
-    uri = URI("#{BASE_URL}#{path}")
-
-    http = Net::HTTP.new(uri.host, uri.port)
-    http.open_timeout = 5
-    http.read_timeout = TIMEOUT
-    http.continue_timeout = nil
-
-    request = Net::HTTP::Put.new(uri.request_uri)
-    request["Content-Type"] = "application/json"
-    request["Accept"] = "application/json"
-    request.body = body.to_json
-
-    response = http.start do |conn|
-      conn.request(request)
-    end
-
-    parse_response(response, path)
-  end
-
-  def self.get(path, params = {})
-    uri = URI("#{BASE_URL}#{path}")
-    uri.query = URI.encode_www_form(params) if params.any?
-
-    response = Net::HTTP.get_response(uri)
 
     parse_response(response, path)
   rescue EOFError, Errno::ECONNRESET, Errno::EPIPE, Timeout::Error, Net::OpenTimeout, Net::ReadTimeout => e
     raise BackendError, "Connection error to backend at #{path}: #{e.class}"
   end
 
-  def self.build_http(uri)
-    http = Net::HTTP.new(uri.host, uri.port)
-    http.read_timeout = TIMEOUT
-    http.open_timeout = 5
-    http
+  def self.get(path, params = {})
+    request(:get, path, params)
+  end
+
+  def self.post(path, body = {})
+    request(:post, path, body)
+  end
+
+  def self.put_request(path, body = {})
+    request(:put, path, body)
+  end
+
+  def self.delete_request(path)
+    request(:delete, path)
   end
 
   def self.parse_response(response, path)
