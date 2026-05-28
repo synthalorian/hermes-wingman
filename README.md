@@ -100,10 +100,11 @@ The setup wizard handles everything:
 ### Option 2: Web Dashboard
 
 ```bash
-cd hermes_wingman_web
+cd web
 
 # Install dependencies
 bundle install
+bin/rails tailwindcss:build
 
 # Start the server
 bin/rails server -b 0.0.0.0 -p 3000
@@ -216,7 +217,7 @@ flutter build linux --release
 flutter build apk --debug
 
 # Rails web app
-cd ../hermes_wingman_web
+cd web
 bundle install
 bin/rails tailwindcss:build
 bin/rails server -b 0.0.0.0 -p 3000
@@ -262,28 +263,25 @@ hermes_wingman/                    # Flutter + Rust monorepo
 ├── linux/                         # Linux platform files
 ├── macos/                         # macOS platform files
 ├── windows/                       # Windows platform files
+├── web/                           # Rails 8 web dashboard
+│   ├── app/controllers/           # 24 controllers (RESTful + Turbo)
+│   ├── app/views/                 # 22 view directories + layouts
+│   ├── app/services/              # HermesApiService (proxies to Rust backend)
+│   ├── app/models/                # Profile, Mission, Webhook, etc.
+│   ├── config/routes.rb           # All routes defined
+│   └── db/migrate/                # SQLite schema
 └── assets/                        # Icons, images
-
-hermes_wingman_web/                # Ruby on Rails 8 web dashboard
-├── app/
-│   ├── controllers/               # 24 controllers (RESTful + Turbo)
-│   ├── views/                     # 22 view directories + layouts
-│   ├── services/                  # HermesApiService (proxies to Rust backend)
-│   ├── models/                    # Profile, Mission, Webhook, etc.
-│   └── assets/tailwind/           # 30-theme CSS system with glass effects
-├── config/routes.rb               # All routes defined
-└── db/migrate/                    # SQLite schema
 ```
 
 ---
 
-## 🌐 Web Dashboard Details
+## 🌐 Web Dashboard
 
-The Rails web app mirrors the Flutter app's functionality in the browser:
+The **`web/`** directory contains the full Rails dashboard — same features as the Flutter app, in your browser:
 
 **Tech stack:** Ruby on Rails 8.1 + Hotwire/Turbo + Tailwind CSS v4 + SQLite
 **Port:** 3000 (configurable)
-**Themes:** Same 30-theme CSS custom property system as the Flutter app
+**Themes:** Same 29-theme CSS custom property system as the Flutter app, synced via session cookie
 **Backend:** Proxies all requests to the Rust backend at port 9120
 
 All 24 controllers map to features in the Flutter desktop app:
@@ -321,7 +319,7 @@ BIND_ADDR=0.0.0.0:9120 backend/target/release/hermes-wingman-backend &
 flutter run
 
 # Or run the Rails web app
-cd ../hermes_wingman_web && bin/rails server
+cd web && bin/rails server
 ```
 
 ---

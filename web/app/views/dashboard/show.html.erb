@@ -1,0 +1,110 @@
+<% content_for :title, "Dashboard — Hermes Wingman" %>
+<% content_for :header_title, "Dashboard" %>
+
+<% @health ||= {}; @models ||= {}; @sessions_raw ||= [] %>
+
+<% if @error.present? %>
+  <div class="error-banner">⚠ <%= @error %></div>
+<% end %>
+
+<!-- Stat Cards -->
+<div class="stat-grid">
+  <div class="stat-card">
+    <div class="stat-label">Backend</div>
+    <div class="stat-value" style="color: <%= @health['hermes_installed'] ? 'var(--success)' : 'var(--error)' %>;">
+      <%= @health['hermes_installed'] ? 'Running' : 'Offline' %>
+    </div>
+    <div class="stat-sub"><%= @health['hermes_version'].to_s.split("\n").first&.truncate(40) || '—' %></div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-label">Active Model</div>
+    <div class="stat-value" style="color:var(--accent-cyan); font-size:16px;">
+      <%= @models['current'].presence || @health['model'].presence || '—' %>
+    </div>
+    <% if @models['provider'].present? %>
+      <div class="stat-sub">via <%= @models['provider'] %></div>
+    <% end %>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-label">Local Models</div>
+    <div class="stat-value" style="color:var(--accent-primary);">
+      <%= @models.dig('local')&.length || 0 %>
+    </div>
+    <div class="stat-sub">configured</div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-label">Cloud Models</div>
+    <div class="stat-value" style="color:var(--accent-cyan);">
+      <%= @models.dig('cloud')&.length || 0 %>
+    </div>
+    <div class="stat-sub">available</div>
+  </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="section-header">
+  <span class="section-title">Quick Actions</span>
+</div>
+
+<div class="grid-auto mb-8">
+  <% quick = [
+    ['💬', 'Chat', 'Send messages to Hermes', '/chat'],
+    ['🧠', 'Models', 'Browse and switch AI models', '/models'],
+    ['📋', 'Sessions', 'View past conversations', '/sessions'],
+    ['🔧', 'Config', 'Edit configuration', '/config'],
+    ['🔮', 'Skills', 'Manage agent skills', '/skills'],
+    ['💾', 'Memory', 'View agent memory', '/memory'],
+    ['📁', 'Files', 'Browse workspace files', '/files'],
+    ['🎯', 'Missions', 'Run autonomous missions', '/missions'],
+    ['👤', 'Profiles', 'Save model presets', '/profiles'],
+    ['⏰', 'Cron', 'Scheduled jobs', '/cron_jobs'],
+    ['🔌', 'Gateway', 'Platform connections', '/gateway'],
+    ['📊', 'Usage', 'Analytics', '/usage'],
+  ] %>
+  <% quick.each do |icon, title, desc, path| %>
+    <a href="<%= path %>" style="text-decoration:none;">
+      <div class="card" style="padding:16px 20px;">
+        <div style="font-size:24px; margin-bottom:8px;"><%= icon %></div>
+        <div style="font-size:13px; font-weight:600; color:var(--text-primary); margin-bottom:2px;"><%= title %></div>
+        <div style="font-size:11px; color:var(--text-muted);"><%= desc %></div>
+      </div>
+    </a>
+  <% end %>
+</div>
+
+<!-- Recent Sessions -->
+<div class="card">
+  <div class="card-header">
+    <span class="section-title" style="margin:0;">Recent Sessions</span>
+    <a href="/sessions" class="btn btn-sm">View All →</a>
+  </div>
+  <div class="card-body" style="padding:0;">
+    <% if @sessions_raw.is_a?(Array) && @sessions_raw.any? %>
+      <% @sessions_raw.first(5).each do |s| %>
+        <div class="flex items-center justify-between" style="padding:10px 20px; border-bottom:1px solid var(--border-light); transition:var(--t-fast);"
+             onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background='transparent'">
+          <div>
+            <div style="font-size:12px; color:var(--text-primary);"><%= s['title'].presence || 'Untitled' %></div>
+            <div class="text-xs text-dim text-mono" style="font-size:10px; margin-top:2px;">
+              …<%= s['id'].to_s.last(12) %>
+            </div>
+          </div>
+          <div class="flex items-center gap-4">
+            <span class="badge badge-primary"><%= s['message_count'] || 0 %> msgs</span>
+            <span class="text-xs text-dim"><%= s['last_active'].presence || '—' %></span>
+          </div>
+        </div>
+      <% end %>
+    <% else %>
+      <div class="empty-state" style="padding:40px;">
+        <div class="empty-state-icon">💬</div>
+        <div class="empty-state-title">No sessions yet</div>
+        <div class="empty-state-desc">Start a chat to create one</div>
+        <a href="/chat" class="btn btn-primary btn-sm" style="margin-top:12px;">Start Chatting →</a>
+      </div>
+    <% end %>
+  </div>
+</div>

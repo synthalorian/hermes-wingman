@@ -1,0 +1,15 @@
+<% content_for :title, "Missions — Hermes Wingman" %>
+<% content_for :header_title, "Missions" %>
+
+<div class="card">
+  <div class="card-header"><span class="section-title">AI Missions (Kanban)</span></div>
+  <div class="card-body">
+    <div class="empty-state">
+      <div class="empty-state-icon">🎯</div>
+      <div class="empty-state-title">Missions Board</div>
+      <div class="empty-state-desc">Schedule and manage autonomous AI tasks. Use <code>hermes kanban</code> to create missions.</div>
+      <button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="fetch('/api/missions').then(r=>r.json()).then(d=>{document.getElementById('mis-out').textContent=JSON.stringify(d,null,2)})">Check Missions</button>
+      <pre id="mis-out" style="margin-top:12px;background:var(--bg-tertiary);padding:12px;border-radius:6px;font-size:10px;max-height:200px;overflow:auto"></pre>
+    </div>
+  </div>
+</div>

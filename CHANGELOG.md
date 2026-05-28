@@ -25,11 +25,13 @@
 ### 🏗 Architecture
 - **Flutter frontend** — 44 Dart files, 15 screens, 29-theme glass morphism design system
 - **Rust backend** — 24 modular Axum files, 40+ API endpoints, direct provider API calls
-- **Rails web dashboard** — 24 controllers, Turbo/Hotwire, Tailwind CSS v4
+- **Rails web dashboard** — 19 screens, 24 controllers, Turbo/Hotwire, Tailwind CSS v4
+- **Unified monorepo** — all three editions in one repository (`lib/`, `backend/`, `web/`)
 - **Cross-platform**: Linux, macOS, Windows, Android, iOS, Web
 
 ### 🔧 Technical
 - Modular backend after refactor from 2,781-line monolith to 24 focused modules
+- Web dashboard migrated into monorepo (previously `hermes-wingman-web`)
 - Auto-discovery backend for mobile LAN connections
 - Direct provider API calls (OpenAI, Anthropic, xAI, llama-swap) + CLI fallback for OAuth
 - Glass morphism UI with BackdropFilter across all platforms

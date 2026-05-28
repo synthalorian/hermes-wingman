@@ -1,0 +1,204 @@
+<% content_for :title, "Models — Hermes Wingman" %>
+<% content_for :header_title, "MODELS // AI PROVIDER BROWSER" %>
+
+<div style="max-width: 1200px; margin: 0 auto;">
+
+  <%# ── Flash Messages ─────────────────────────────────────────────── %>
+  <% if flash[:notice] %>
+    <div style="
+      background: color-mix(in srgb, var(--accent-green) 10%, transparent);
+      border: 1px solid color-mix(in srgb, var(--accent-green) 30%, transparent);
+      border-radius: var(--radius-lg);
+      padding: 12px 16px;
+      margin-bottom: 16px;
+    ">
+      <div style="color: var(--accent-green); font-size: 12px; font-family: var(--font-mono);">
+        ✓ <%= flash[:notice] %>
+      </div>
+    </div>
+  <% end %>
+
+  <% if flash[:alert] %>
+    <div style="
+      background: color-mix(in srgb, var(--accent-red) 10%, transparent);
+      border: 1px solid color-mix(in srgb, var(--accent-red) 30%, transparent);
+      border-radius: var(--radius-lg);
+      padding: 12px 16px;
+      margin-bottom: 16px;
+    ">
+      <div style="color: var(--accent-red); font-size: 12px; font-family: var(--font-mono);">
+        ⚠ <%= flash[:alert] %>
+      </div>
+    </div>
+  <% end %>
+
+  <% if @error.present? %>
+    <div style="
+      background: color-mix(in srgb, var(--accent-red) 10%, transparent);
+      border: 1px solid color-mix(in srgb, var(--accent-red) 30%, transparent);
+      border-radius: var(--radius-lg);
+      padding: 16px 20px;
+      margin-bottom: 24px;
+    ">
+      <div style="color: var(--accent-red); font-size: 12px; font-family: var(--font-mono);">
+        ⚠ <%= @error %>
+      </div>
+    </div>
+  <% end %>
+
+  <%# ── Current Model Badge ────────────────────────────────────────── %>
+  <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 24px; padding: 16px 20px; border-radius: var(--radius-lg); border: 1px solid var(--border-glow); background: color-mix(in srgb, var(--accent-primary) 6%, transparent);">
+    <span style="font-size: 24px;">🧠</span>
+    <div>
+      <div style="font-size: 10px; font-family: var(--font-mono); color: var(--text-muted); letter-spacing: 1px;">CURRENT MODEL</div>
+      <div style="font-size: 16px; color: var(--accent-tertiary); font-weight: 600; font-family: var(--font-mono); margin-top: 2px;">
+        <%= @current_model.presence || '—' %>
+      </div>
+    </div>
+    <% if @current_model.present? %>
+      <span style="
+        margin-left: auto;
+        font-size: 10px;
+        padding: 3px 8px;
+        border-radius: 4px;
+        background: color-mix(in srgb, var(--accent-tertiary) 15%, transparent);
+        color: var(--accent-tertiary);
+        font-family: var(--font-mono);
+      ">ACTIVE</span>
+    <% end %>
+  </div>
+
+  <%# ── Sections Helper ────────────────────────────────────────────── %>
+  <% sections = [
+    { key: 'local',    label: 'LOCAL MODELS',    models: @local_models,    icon: '🖥️', color: 'var(--accent-primary)' },
+    { key: 'cloud',    label: 'CLOUD MODELS',    models: @cloud_models,    icon: '☁️', color: 'var(--accent-cyan)' },
+    { key: 'fallback', label: 'FALLBACK MODELS', models: @fallback_models, icon: '🔁', color: 'var(--accent-orange)' },
+  ] %>
+
+  <% sections.each do |section| %>
+    <div style="margin-bottom: 28px;">
+      <%# Section Header %>
+      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+        <span style="font-size: 16px;"><%= section[:icon] %></span>
+        <span style="font-size: 11px; font-family: var(--font-mono); color: <%= section[:color] %>; letter-spacing: 1px;"><%= section[:label] %></span>
+        <span style="
+          font-size: 9px;
+          font-family: var(--font-mono);
+          padding: 1px 6px;
+          border-radius: 3px;
+          background: color-mix(in srgb, <%= section[:color] %> 12%, transparent);
+          color: <%= section[:color] %>;
+        "><%= section[:models].length %></span>
+      </div>
+
+      <% if section[:models].any? %>
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px;">
+          <% section[:models].each do |model| %>
+            <% model_name = model.is_a?(Hash) ? (model['name'] || model['id']) : model.to_s %>
+            <% model_source = model.is_a?(Hash) ? model['source'] || model['provider'] : nil %>
+            <% is_current = model_name == @current_model %>
+            <% is_configured = model.is_a?(Hash) ? model['configured'] || model['available'] != false : true %>
+
+            <div class="glass-card" style="
+              padding: 16px;
+              display: flex;
+              flex-direction: column;
+              gap: 10px;
+              <%= is_current ? "border-color: var(--accent-tertiary); box-shadow: 0 0 8px color-mix(in srgb, var(--accent-tertiary) 30%, transparent);" : "" %>
+              <%= !is_configured ? "opacity: 0.65;" : "" %>
+            ">
+              <%# Top row: name + current badge %>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 13px; color: var(--text-primary); font-weight: 600; font-family: var(--font-mono); word-break: break-all;">
+                  <%= model_name %>
+                </span>
+                <% if is_current %>
+                  <span style="
+                    font-size: 8px;
+                    padding: 2px 5px;
+                    border-radius: 3px;
+                    background: color-mix(in srgb, var(--accent-tertiary) 20%, transparent);
+                    color: var(--accent-tertiary);
+                    font-family: var(--font-mono);
+                    letter-spacing: 1px;
+                    flex-shrink: 0;
+                  ">CURRENT</span>
+                <% end %>
+                <% if !is_configured %>
+                  <span style="
+                    font-size: 8px;
+                    padding: 2px 5px;
+                    border-radius: 3px;
+                    background: color-mix(in srgb, var(--text-muted) 20%, transparent);
+                    color: var(--text-muted);
+                    font-family: var(--font-mono);
+                    letter-spacing: 1px;
+                    flex-shrink: 0;
+                  ">UNAVAILABLE</span>
+                <% end %>
+              </div>
+
+              <%# Source badge %>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <% if model_source.present? %>
+                  <span style="
+                    font-size: 9px;
+                    padding: 2px 6px;
+                    border-radius: 3px;
+                    background: color-mix(in srgb, var(--accent-blue) 12%, transparent);
+                    color: var(--accent-blue);
+                    font-family: var(--font-mono);
+                  "><%= model_source %></span>
+                <% end %>
+                <% if model.is_a?(Hash) && model['provider_id'].present? %>
+                  <span style="font-size: 9px; color: var(--text-muted); font-family: var(--font-mono);">
+                    via <%= model['provider_id'] %>
+                  </span>
+                <% end %>
+                <% if model.is_a?(Hash) && model['type'].present? %>
+                  <span style="
+                    font-size: 9px;
+                    padding: 2px 6px;
+                    border-radius: 3px;
+                    background: color-mix(in srgb, var(--accent-secondary) 10%, transparent);
+                    color: var(--accent-secondary);
+                    font-family: var(--font-mono);
+                  "><%= model['type'] %></span>
+                <% end %>
+              </div>
+
+              <%# Action buttons %>
+              <div style="display: flex; gap: 8px; margin-top: 4px;">
+                <% unless is_current %>
+                  <%= form_tag switch_model_path(model_name), method: :post, style: "margin: 0;" do %>
+                    <%= token_tag %>
+                    <button type="submit" class="btn btn-primary" style="font-size: 10px; padding: 4px 10px;">
+                      Switch
+                    </button>
+                  <% end %>
+                <% end %>
+                <%= form_tag probe_model_path(model_name), method: :post, style: "margin: 0;" do %>
+                  <%= token_tag %>
+                  <button type="submit" class="btn" style="font-size: 10px; padding: 4px 10px;">
+                    Probe
+                  </button>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <div style="
+          text-align: center;
+          padding: 32px 16px;
+          border-radius: var(--radius-lg);
+          border: 1px dashed var(--border-light);
+          color: var(--text-muted);
+          font-size: 12px;
+        ">
+          No <%= section[:label].downcase %> available.
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+</div>

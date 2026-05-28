@@ -1,0 +1,102 @@
+<% content_for :title, "Providers — Hermes Wingman" %>
+<% content_for :header_title, "Providers" %>
+
+<div class="card">
+  <div class="card-header">
+    <span class="section-title">AI Provider Credentials</span>
+    <button class="btn btn-primary btn-sm" onclick="loadProviders()">⟳ Refresh</button>
+  </div>
+  <div id="providers-list" class="card-body">
+    <div class="empty-state">
+      <div class="empty-state-icon">🔑</div>
+      <div class="spinner"></div>
+      <div class="empty-state-desc">Loading providers...</div>
+    </div>
+  </div>
+</div>
+
+<script>
+async function loadProviders() {
+  const el = document.getElementById('providers-list');
+  try {
+    const res = await fetch('/api/auth_status');
+    const data = await res.json();
+    const providers = data.providers || [];
+    if (!providers.length) {
+      el.innerHTML = `<div class="empty-state">
+        <div class="empty-state-icon">🔑</div>
+        <div class="empty-state-title">No Providers Found</div>
+        <div class="empty-state-desc">Add a provider to get started with Hermes.</div>
+      </div>`;
+      return;
+    }
+    el.innerHTML = providers.map(p => {
+      const loggedIn = p.status === 'logged_in';
+      const isOAuth = p.type === 'oauth';
+      return `<div class="list-item">
+        <div class="list-item-icon" style="background:${loggedIn ? 'var(--success)' : 'var(--primary)'}22">
+          <span style="font-size:16px">${isOAuth ? '🔄' : '🔑'}</span>
+        </div>
+        <div class="list-item-body">
+          <div class="list-item-title">${p.name}</div>
+          <div class="list-item-subtitle">${isOAuth ? 'OAuth' : 'API Key'} · ${loggedIn ? '<span style="color:var(--success)">✓ Active</span>' : '<span style="color:var(--text-muted)">—</span>'}</div>
+        </div>
+        <div class="list-item-action">
+          ${loggedIn
+            ? `<button class="btn btn-sm btn-danger" onclick="logoutProvider('${p.name}')">Logout</button>`
+            : `<button class="btn btn-sm btn-primary" onclick="loginProvider('${p.name}')">${isOAuth ? 'OAuth Login' : 'Add Key'}</button>`
+          }
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><div class="empty-state-desc">Error: ${e.message}</div></div>`;
+  }
+}
+
+async function loginProvider(name) {
+  const isOAuth = name === 'nous' || name === 'xai-oauth' || name === 'openai-codex';
+  if (isOAuth) {
+    try {
+      const res = await fetch('/api/auth_status');
+      const data = await res.json();
+      const loginRes = await fetch('/api/login_oauth', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({provider: name})
+      });
+      const loginData = await loginRes.json();
+      if (loginData.url) {
+        window.open(loginData.url, '_blank');
+        alert(`Authentication URL opened in a new tab. Complete the login there.\n\nURL: ${loginData.url}`);
+      }
+      loadProviders();
+    } catch(e) { alert('Error: ' + e.message); }
+  } else {
+    const key = prompt(`Enter API key for ${name}:`);
+    if (!key) return;
+    try {
+      await fetch('/api/login_api_key', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({provider: name, api_key: key})
+      });
+      loadProviders();
+    } catch(e) { alert('Error: ' + e.message); }
+  }
+}
+
+async function logoutProvider(name) {
+  if (!confirm(`Logout ${name}?`)) return;
+  try {
+    await fetch('/api/logout_provider', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({provider: name})
+    });
+    loadProviders();
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+loadProviders();
+</script>

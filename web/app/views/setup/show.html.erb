@@ -1,0 +1,48 @@
+<% content_for :title, "Setup — Hermes Wingman" %>
+<% content_for :header_title, "SETUP // WIZARD" %>
+
+<div style="max-width: 700px; margin: 0 auto;">
+  <% if @error %>
+    <div style="background: color-mix(in srgb, var(--accent-red) 10%, transparent); border: 1px solid color-mix(in srgb, var(--accent-red) 30%, transparent); border-radius: var(--radius-lg); padding: 12px 16px; margin-bottom: 16px;">
+      <span style="color: var(--accent-red); font-size: 12px;">⚠ <%= @error %></span>
+    </div>
+  <% end %>
+
+  <!-- Detection Status -->
+  <div class="glass-card" style="padding: 20px; margin-bottom: 16px;">
+    <div style="font-size: 11px; font-family: var(--font-mono); color: var(--text-muted); letter-spacing: 1px; margin-bottom: 16px;">SYSTEM DETECTION</div>
+
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-radius: var(--radius-md); border: 1px solid var(--border-light);">
+        <span style="font-size: 12px; color: var(--text-primary);">Hermes Installed</span>
+        <span style="font-size: 12px; color: <%= @detect["hermes_installed"] ? "var(--success)" : "var(--error)" %>;">
+          <%= @detect["hermes_installed"] ? "✅ Yes" : "❌ No" %>
+        </span>
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-radius: var(--radius-md); border: 1px solid var(--border-light);">
+        <span style="font-size: 12px; color: var(--text-primary);">Config Exists</span>
+        <span style="font-size: 12px; color: <%= @detect["config_exists"] ? "var(--success)" : "var(--warning)" %>;">
+          <%= @detect["config_exists"] ? "✅ Yes" : "❌ No" %>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Actions -->
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+    <div class="glass-card" style="padding: 20px;">
+      <div style="font-size: 12px; color: var(--text-primary); font-weight: 600; margin-bottom: 8px;">Install Hermes</div>
+      <div style="font-size: 10px; color: var(--text-muted); margin-bottom: 12px;">Install or update the Hermes Agent CLI</div>
+      <%= form_tag install_setup_path, method: :post do %>
+        <button type="submit" class="btn btn-primary" style="font-size: 11px; width: 100%;">Install / Update</button>
+      <% end %>
+    </div>
+    <div class="glass-card" style="padding: 20px;">
+      <div style="font-size: 12px; color: var(--text-primary); font-weight: 600; margin-bottom: 8px;">Auto-Configure</div>
+      <div style="font-size: 10px; color: var(--text-muted); margin-bottom: 12px;">Auto-detect settings and configure Hermes</div>
+      <%= form_tag configure_setup_path, method: :post do %>
+        <button type="submit" class="btn" style="font-size: 11px; width: 100%;">Configure</button>
+      <% end %>
+    </div>
+  </div>
+</div>

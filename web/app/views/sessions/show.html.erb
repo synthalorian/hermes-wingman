@@ -1,0 +1,189 @@
+<% content_for :title, "#{@session['title'].presence || 'Session'} — Hermes Wingman" %>
+<% content_for :header_title, "📋 // SESSION DETAIL" %>
+
+<div style="max-width: 900px; margin: 0 auto;">
+  <!-- Back Link -->
+  <a href="<%= sessions_path %>" style="
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-family: var(--font-mono);
+    color: var(--accent-tertiary);
+    text-decoration: none;
+    margin-bottom: 16px;
+    transition: opacity var(--transition-speed);
+  " onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">
+    ← Back to Sessions
+  </a>
+
+  <!-- Session Header Card -->
+  <div class="glass-card" style="padding: 20px; margin-bottom: 20px;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+      <div style="flex: 1;">
+        <div style="font-size: 11px; font-family: var(--font-mono); color: var(--text-muted); letter-spacing: 1px; margin-bottom: 8px;">
+          SESSION
+        </div>
+        <h2 style="margin: 0 0 6px 0; font-size: 18px; color: var(--text-primary); font-weight: 600;">
+          <%= @session['title'].presence || 'Untitled Session' %>
+        </h2>
+        <div style="display: flex; flex-wrap: wrap; gap: 16px; margin-top: 12px;">
+          <div>
+            <span style="font-size: 9px; font-family: var(--font-mono); color: var(--text-muted); display: block; margin-bottom: 2px;">ID</span>
+            <span style="font-size: 11px; font-family: var(--font-mono); color: var(--text-secondary);">
+              <%= @session['id'] %>
+            </span>
+          </div>
+          <div>
+            <span style="font-size: 9px; font-family: var(--font-mono); color: var(--text-muted); display: block; margin-bottom: 2px;">MODEL</span>
+            <span style="font-size: 11px; font-family: var(--font-mono); color: var(--accent-tertiary);">
+              <%= @session['model'].presence || @session['current_model'].presence || '—' %>
+            </span>
+          </div>
+          <div>
+            <span style="font-size: 9px; font-family: var(--font-mono); color: var(--text-muted); display: block; margin-bottom: 2px;">MESSAGES</span>
+            <span style="font-size: 11px; font-family: var(--font-mono); color: var(--accent-primary);">
+              <%= @session['message_count'] || @session['messages']&.length || 0 %>
+            </span>
+          </div>
+          <% if @session['created_at'].present? %>
+            <div>
+              <span style="font-size: 9px; font-family: var(--font-mono); color: var(--text-muted); display: block; margin-bottom: 2px;">CREATED</span>
+              <span style="font-size: 11px; font-family: var(--font-mono); color: var(--text-secondary);">
+                <%= Time.parse(@session['created_at'].to_s).strftime('%Y-%m-%d %H:%M') rescue @session['created_at'] %>
+              </span>
+            </div>
+          <% end %>
+          <% if @session['updated_at'].present? %>
+            <div>
+              <span style="font-size: 9px; font-family: var(--font-mono); color: var(--text-muted); display: block; margin-bottom: 2px;">UPDATED</span>
+              <span style="font-size: 11px; font-family: var(--font-mono); color: var(--text-secondary);">
+                <%= time_ago_in_words(Time.parse(@session['updated_at'].to_s)) rescue @session['updated_at'] %> ago
+              </span>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Resume Button -->
+      <%= form_tag resume_session_path(@session['id']), method: :post, style: "margin: 0; flex-shrink: 0;" do %>
+        <%= token_tag %>
+        <button type="submit" class="btn btn-primary" style="
+          font-size: 11px;
+          padding: 8px 16px;
+          cursor: pointer;
+          white-space: nowrap;
+        ">▶ Resume Session</button>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Messages Display -->
+  <div class="glass-card" style="padding: 0; overflow: hidden;">
+    <div style="
+      font-size: 11px;
+      font-family: var(--font-mono);
+      color: var(--text-muted);
+      letter-spacing: 1px;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border-light);
+      background: color-mix(in srgb, var(--bg-tertiary) 30%, transparent);
+    ">
+      MESSAGE HISTORY
+    </div>
+
+    <% messages = @session['messages'] || [] %>
+    <% if messages.any? %>
+      <div style="padding: 16px 20px; display: flex; flex-direction: column; gap: 12px;">
+        <% messages.each do |msg| %>
+          <% role = msg['role'].to_s.downcase %>
+          <% content = msg['content'].presence || msg['message'].presence || '' %>
+          <% is_user = role == 'user' %>
+          <div style="display: flex; gap: 12px; <%= is_user ? 'justify-content: flex-end;' : '' %>">
+            <% unless is_user %>
+              <div style="
+                width: 32px;
+                height: 32px;
+                border-radius: 50%;
+                background: var(--gradient-primary);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 14px;
+                flex-shrink: 0;
+              ">🤖</div>
+            <% end %>
+            <div style="
+              max-width: 80%;
+              padding: 10px 14px;
+              border-radius: 12px;
+              font-size: 13px;
+              line-height: 1.5;
+              color: var(--text-primary);
+              <%= is_user ? 'background: color-mix(in srgb, var(--accent-primary) 12%, transparent); border-radius: 12px 4px 12px 12px;' : "background: var(--bg-surface); border: 1px solid var(--border-light); border-radius: 4px 12px 12px 12px;" %>
+            ">
+              <div style="font-size: 9px; font-family: var(--font-mono); color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase;">
+                <%= role %>
+              </div>
+              <div style="white-space: pre-wrap; word-break: break-word;"><%= content %></div>
+              <% if msg['timestamp'].present? %>
+                <div style="font-size: 9px; color: var(--text-muted); margin-top: 6px; font-family: var(--font-mono); text-align: right;">
+                  <%= Time.parse(msg['timestamp'].to_s).strftime('%H:%M:%S') rescue '' %>
+                </div>
+              <% end %>
+            </div>
+            <% if is_user %>
+              <div style="
+                width: 32px;
+                height: 32px;
+                border-radius: 50%;
+                background: var(--bg-tertiary);
+                border: 1px solid var(--border-light);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 14px;
+                flex-shrink: 0;
+              ">👤</div>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    <% else %>
+      <div style="padding: 48px 24px; text-align: center;">
+        <div style="font-size: 32px; margin-bottom: 12px; opacity: 0.3;">💬</div>
+        <div style="font-size: 12px; color: var(--text-muted); font-family: var(--font-mono);">
+          No messages in this session.
+        </div>
+      </div>
+    <% end %>
+  </div>
+
+  <!-- Bottom Actions -->
+  <div style="display: flex; gap: 12px; margin-top: 20px;">
+    <a href="<%= sessions_path %>" style="
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-md);
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 11px;
+      font-family: var(--font-mono);
+      transition: all var(--transition-speed);
+    " onmouseover="this.style.borderColor='var(--accent-primary)'" onmouseout="this.style.borderColor='var(--border-light)'">
+      ← All Sessions
+    </a>
+
+    <%= form_tag session_path(@session['id']), method: :delete, style: "margin: 0;", data: { confirm: "Permanently delete this entire session?" } do %>
+      <%= token_tag %>
+      <button type="submit" class="btn btn-danger" style="
+        font-size: 11px;
+        padding: 8px 16px;
+        cursor: pointer;
+      ">✕ Delete Session</button>
+    <% end %>
+  </div>
+</div>
