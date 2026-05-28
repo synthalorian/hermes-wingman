@@ -6,7 +6,6 @@ import '../../theme/app_theme.dart';
 import '../../services/hermes_service.dart';
 import '../../services/hermes_api_client.dart' show BackendService;
 import '../../services/wingman_settings.dart';
-import 'fallback_section.dart';
 
 final bool _isMobile = Platform.isAndroid || Platform.isIOS;
 
@@ -342,10 +341,9 @@ class _ConfigScreenState extends State<ConfigScreen> {
             color: scheme.primary.withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(6),
             child: InkWell(
-              borderRadius: BorderRadius.circular(6),
-              onTap: () async {
+              borderRadius: BorderRadius.circular(6),                          onTap: () async {
                 final changed = await WingmanSettings.showConnectionDialog(context);
-                if (changed == true && context.mounted) {
+                if (changed == true && mounted) {
                   // Reconnect backend
                   final backend = context.read<BackendService>();
                   backend.setBaseUrl(settings.backendHost, settings.backendPort);
@@ -459,7 +457,7 @@ class _ConfigScreenState extends State<ConfigScreen> {
                             child: Switch(
                               value: oauth,
                               onChanged: (v) => isOAuth.value = v,
-                              activeColor: scheme.primary,
+                              activeThumbColor: scheme.primary,
                             ),
                           ),
                         ],

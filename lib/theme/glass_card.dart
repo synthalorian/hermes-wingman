@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'app_theme.dart';
 
 /// A frosted glass card with backdrop blur, subtle border, and optional glow.
-/// The signature visual upgrade for Hermes Wingman.
 class GlassCard extends StatelessWidget {
   final Widget child;
   final AppColorScheme scheme;
@@ -165,12 +164,12 @@ class AccentGlassCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return SizedBox(
       width: width,
-child: ClipRRect(
-          borderRadius: BorderRadius.circular(10),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(10),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
           child: Container(
             padding: padding ?? const EdgeInsets.all(16),
             decoration: BoxDecoration(

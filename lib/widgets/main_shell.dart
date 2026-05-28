@@ -6,10 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:hermes_wingman/theme/theme_manager.dart';
 import 'package:hermes_wingman/theme/app_theme.dart';
 import 'package:hermes_wingman/theme/animated_background.dart';
-import 'package:hermes_wingman/services/hermes_service.dart';
-import 'package:hermes_wingman/services/wingman_settings.dart';
-import 'package:hermes_wingman/services/chat_manager.dart';
-
+import 'package:hermes_wingman/services/hermes_api_client.dart';
 import 'nav_item.dart';
 import 'animated_sidebar_icon.dart';
 import 'animated_wingman_mark.dart';

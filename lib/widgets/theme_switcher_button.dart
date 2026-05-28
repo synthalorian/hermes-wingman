@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:hermes_wingman/theme/theme_manager.dart';
-import 'package:hermes_wingman/theme/app_theme.dart';
-
 class ThemeSwitcherButton extends StatelessWidget {
   const ThemeSwitcherButton({super.key});
 
