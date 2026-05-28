@@ -1,0 +1,2 @@
+class UsageSnapshot < ApplicationRecord
+end

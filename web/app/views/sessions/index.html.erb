@@ -1,0 +1,38 @@
+<% content_for :title, "Sessions — Hermes Wingman" %>
+<% content_for :header_title, "Sessions" %>
+
+<div class="card">
+  <div class="card-header">
+    <span class="section-title">Past Sessions</span>
+    <button class="btn btn-primary btn-sm" onclick="loadSessions()">⟳ Refresh</button>
+  </div>
+  <div id="sessions-list" class="card-body">
+    <div class="empty-state"><div class="spinner"></div><div class="empty-state-desc">Loading sessions...</div></div>
+  </div>
+</div>
+
+<script>
+async function loadSessions() {
+  const el = document.getElementById('sessions-list');
+  try {
+    const res = await fetch('/api/sessions');
+    const data = await res.json();
+    const sessions = data.sessions || [];
+    if (!sessions.length) {
+      el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-title">No Sessions</div><div class="empty-state-desc">Chat with Hermes to create sessions.</div></div>';
+      return;
+    }
+    el.innerHTML = sessions.map(s => `<div class="list-item">
+      <div class="list-item-icon">💬</div>
+      <div class="list-item-body">
+        <div class="list-item-title">${escapeHtml(s.title || 'Untitled')}</div>
+        <div class="list-item-subtitle">${escapeHtml(s.preview || '')} · ${s.last_active || ''}</div>
+      </div>
+    </div>`).join('');
+  } catch(e) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><div class="empty-state-desc">Error: ${e.message}</div></div>`;
+  }
+}
+function escapeHtml(s) { const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
+loadSessions();
+</script>

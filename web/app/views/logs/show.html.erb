@@ -1,0 +1,32 @@
+<% content_for :title, "Log Entry — Hermes Wingman" %>
+<% content_for :header_title, "LOG // ENTRY" %>
+
+<div style="max-width: 800px; margin: 0 auto;">
+  <div class="glass-card" style="padding: 16px;">
+    <% if @log %>
+      <div style="font-family: var(--font-mono); font-size: 12px; line-height: 1.6;">
+        <div style="margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border-light);">
+          <span style="color: var(--text-muted);">ID:</span>
+          <span style="color: var(--text-primary);"><%= @log_id %></span>
+        </div>
+        <% if @log.is_a?(Hash) %>
+          <% @log.each do |key, value| %>
+            <div style="margin-bottom: 8px;">
+              <span style="color: var(--text-muted); text-transform: uppercase; font-size: 10px;"><%= key %>:</span>
+              <div style="color: var(--text-primary); margin-top: 4px; white-space: pre-wrap; word-break: break-all;">
+                <%= value.is_a?(String) ? value : value.to_json %>
+              </div>
+            </div>
+          <% end %>
+        <% else %>
+          <div style="color: var(--text-primary); white-space: pre-wrap;"><%= @log.to_s %></div>
+        <% end %>
+      </div>
+    <% else %>
+      <div style="text-align: center; padding: 48px; color: var(--text-muted);">
+        <p>Log entry not found or backend returned no data.</p>
+        <a href="<%= logs_path %>" class="btn" style="margin-top: 16px;">Back to Logs</a>
+      </div>
+    <% end %>
+  </div>
+</div>

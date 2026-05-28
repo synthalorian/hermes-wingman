@@ -1,0 +1,50 @@
+<div id="log-entries">
+  <% if entries.any? %>
+    <div style="overflow-x: auto;">
+      <table style="width: 100%; border-collapse: collapse; font-family: var(--font-mono); font-size: 12px;">
+        <thead>
+          <tr style="border-bottom: 1px solid var(--border-light);">
+            <th style="text-align: left; padding: 8px 12px; color: var(--text-muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em;">Timestamp</th>
+            <th style="text-align: left; padding: 8px 12px; color: var(--text-muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em;">Level</th>
+            <th style="text-align: left; padding: 8px 12px; color: var(--text-muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em;">Message</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% entries.each do |entry| %>
+            <% 
+              level = entry['level'].to_s.upcase
+              level_color = case level
+                when 'ERROR', 'CRITICAL' then 'var(--accent-red)'
+                when 'WARNING' then 'var(--warning)'
+                when 'DEBUG' then 'var(--text-muted)'
+                else 'var(--accent-primary)'
+              end
+              level_bg = case level
+                when 'ERROR', 'CRITICAL' then 'color-mix(in srgb, var(--accent-red) 15%, transparent)'
+                when 'WARNING' then 'color-mix(in srgb, var(--warning) 15%, transparent)'
+                when 'DEBUG' then 'color-mix(in srgb, var(--text-muted) 15%, transparent)'
+                else 'color-mix(in srgb, var(--accent-primary) 15%, transparent)'
+              end
+            %>
+            <tr style="border-bottom: 1px solid var(--border-dim); transition: background 0.15s;" onmouseover="this.style.background='var(--surface-hover)'" onmouseout="this.style.background='transparent'">
+              <td style="padding: 8px 12px; white-space: nowrap; color: var(--text-muted);"><%= entry['timestamp'] %></td>
+              <td style="padding: 8px 12px; white-space: nowrap;">
+                <span style="display: inline-flex; align-items: center; padding: 2px 8px; border-radius: var(--radius-sm); font-size: 10px; font-weight: 600; color: <%= level_color %>; background: <%= level_bg %>;">
+                  <%= level %>
+                </span>
+              </td>
+              <td style="padding: 8px 12px; color: var(--text-primary); word-break: break-all;"><%= entry['message'] %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% else %>
+    <div style="text-align: center; padding: 32px; color: var(--text-muted);">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin: 0 auto 8px; color: var(--text-muted); opacity: 0.5;">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+      </svg>
+      <p style="font-size: 12px;">No log entries found.</p>
+    </div>
+  <% end %>
+</div>

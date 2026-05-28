@@ -4,15 +4,15 @@ First off, thanks for wanting to contribute. Hermes Wingman is built for the Her
 
 ## 🧭 Project Overview
 
-Hermes Wingman is a **three-platform ecosystem** that replaces the Hermes CLI entirely:
+Hermes Wingman is a **single monorepo with three editions** that replace the Hermes CLI entirely:
 
 | Platform | Stack | Location |
 |----------|-------|----------|
-| **Desktop App** | Flutter + Rust backend | `hermes_wingman/` |
-| **Mobile App** | Flutter (Android/iOS) | `hermes_wingman/` (same codebase) |
-| **Web Dashboard** | Ruby on Rails 8 + Tailwind | `hermes_wingman_web/` |
+| **Desktop App** | Flutter + Rust backend | `lib/`, `backend/` |
+| **Mobile App** | Flutter (Android/iOS) | Same codebase as desktop |
+| **Web Dashboard** | Ruby on Rails 8 + Tailwind | `web/` |
 
-All three platforms share the same **Rust backend** (port 9120) and the same **29-theme CSS/Flutter design system**.
+All three platforms share the same **Rust backend** (port 9120) and the same **29-theme CSS/Flutter design system** — now in one repository.
 
 ## 🔧 Development Setup
 
@@ -30,8 +30,9 @@ flutter pub get
 cd backend && cargo build --release && cd ..
 
 # Rails web app
-cd ../hermes_wingman_web
+cd web
 bundle install
+bin/rails tailwindcss:build
 ```
 
 ### Running in Development
@@ -46,7 +47,7 @@ cd hermes_wingman
 flutter run -d linux
 
 # Terminal 3: Rails web app
-cd hermes_wingman_web
+cd hermes-wingman/web
 bin/rails tailwindcss:build
 bin/rails server -b 0.0.0.0 -p 3000
 ```
@@ -71,11 +72,11 @@ A modular Axum HTTP server (24 files) with 40+ API endpoints spread across 12 ha
 - File system operations, config management
 - Session management, cron parsing
 
-### Rails Web App (`hermes_wingman_web/`)
+### Rails Web App (`web/`)
 
 - 24 controllers mapping to Flutter screens
 - All requests proxy through the Rust backend via `HermesApiService`
-- 30-theme CSS custom property system matching Flutter exactly
+- 29-theme CSS custom property system matching Flutter exactly
 - SQLite for local metadata (profiles, missions, webhooks)
 
 ## 🎨 Adding a Theme
