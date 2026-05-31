@@ -13,7 +13,7 @@ VERSION="${VERSION:-0.1.0}"
 ARCH="$(uname -m)"
 PKG_NAME="hermes-wingman-${VERSION}-linux-${ARCH}"
 
-echo "🎹🦞  Hermes Wingman Packager"
+echo "🎹🦈  Hermes Wingman Packager"
 echo ""
 
 # ─── Build ────────────────────────────────────────────────────────────────
