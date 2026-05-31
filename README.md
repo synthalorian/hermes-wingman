@@ -16,7 +16,7 @@
   <img src="https://img.shields.io/badge/web-Rails%208-CC0000" alt="Rails">
   <img src="https://img.shields.io/badge/backend-Rust-orange" alt="Rust">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
-  <img src="https://img.shields.io/badge/version-0.1.4-red" alt="Version">
+  <img src="https://img.shields.io/badge/version-1.0.0-red" alt="Version">
 </p>
 
 ---
@@ -338,6 +338,6 @@ If Hermes Wingman helps you work faster, smoother, or cooler — consider buying
 
 MIT License — see [LICENSE](LICENSE) for details.
 
-Built with ❤️ by [synthalorian](https://github.com/synthalorian) with heavy lifting by [synthshark](https://github.com/synthalorian) — a digital entity from the neon grid of 1984.
+Built with ❤️ by [synthalorian](https://github.com/synthalorian) with [synthshark](https://github.com/synthalorian) — a digital entity from the neon grid of 1984.
 
-*This is the wave. 🎹🦈🌆*
+*Made by synth with synthshark. This is the wave. 🎹🦈🌆*

@@ -557,7 +557,7 @@ pub async fn install_hermes(Json(body): Json<InstallRequest>) -> Json<serde_json
                 Err(e) => Json(serde_json::json!({"success": false, "error": format!("Homebrew not found: {}", e)})),
             }
         }
-        "pip" | "auto" => {
+        "pip" => {
             // Try pip3 first, then pip
             for pip_cmd in &["pip3", "pip"] {
                 if let Ok(output) = Command::new(pip_cmd)
