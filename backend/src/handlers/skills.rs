@@ -1,5 +1,4 @@
 use axum::{extract::Path, response::Json};
-use serde::{Deserialize};
 use crate::platform::run_hermes;
 
 // ── Hermes Version & Skills Endpoints ──────────────────────────────────────
@@ -91,11 +90,6 @@ pub async fn hermes_skills() -> Json<serde_json::Value> {
 }
 
 // ── Skills Toggle ──────────────────────────────────────────────────────────
-
-#[derive(Deserialize)]
-struct SkillToggleParams {
-    action: Option<String>,
-}
 
 pub async fn hermes_skills_toggle(
     Path(name): Path<String>,

@@ -1,5 +1,4 @@
 use axum::response::Json;
-use serde::{Deserialize};
 use crate::platform::{hermes_home_dir, run_hermes};
 use crate::helpers::read_file;
 
@@ -88,11 +87,6 @@ pub async fn memory_delete(
             "error": e,
         })),
     }
-}
-
-#[derive(Deserialize)]
-struct MemorySearchQuery {
-    query: Option<String>,
 }
 
 pub async fn memory_search(

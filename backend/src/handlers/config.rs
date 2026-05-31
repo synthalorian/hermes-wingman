@@ -202,8 +202,5 @@ pub async fn validate_config(
     }
 }
 
-#[derive(Deserialize)]
-struct SessionsQuery {
-    limit: Option<u32>,
-}
+
 

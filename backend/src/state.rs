@@ -15,6 +15,7 @@ pub struct AppState {
     pub override_model: Arc<Mutex<Option<String>>>,
     /// Tracks running OAuth login processes.
     /// Map of provider name -> oneshot sender for the auth URL.
+    #[allow(dead_code)]
     auth_urls: Arc<tokio::sync::Mutex<HashMap<String, oneshot::Sender<String>>>>,
 }
 
