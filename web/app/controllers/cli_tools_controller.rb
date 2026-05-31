@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
 class CliToolsController < ApplicationController
-  def index
+  def show
   end
 end

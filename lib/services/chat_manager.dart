@@ -84,9 +84,10 @@ class ChatManager extends ChangeNotifier {
 
   void createSession({String? title}) {
     final n = _sessions.length + 1;
+    final newTitle = title ?? (n == 1 ? 'Chat 1' : 'Chat $n');
     _sessions.add(ChatSession(
       id: _newId(),
-      title: title ?? 'Chat $n',
+      title: newTitle,
     ));
     _activeIndex = _sessions.length - 1;
     _save();
