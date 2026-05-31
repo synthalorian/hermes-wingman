@@ -1,0 +1,13 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  session_count: 1
+  token_count: 1
+  active_models: MyText
+  recorded_at: 2026-05-24 23:30:02
+
+two:
+  session_count: 1
+  token_count: 1
+  active_models: MyText
+  recorded_at: 2026-05-24 23:30:02

@@ -1,0 +1,24 @@
+<% content_for :title, "Profiles — Hermes Wingman" %>
+<% content_for :header_title, "Profiles" %>
+
+<div class="card">
+  <div class="card-header">
+    <span class="section-title">Hermes Profiles</span>
+    <button class="btn btn-primary btn-sm" onclick="loadProfiles()">⟳</button>
+  </div>
+  <div id="profiles-list" class="card-body">
+    <div class="empty-state"><div class="spinner"></div></div>
+  </div>
+</div>
+<script>
+async function loadProfiles() {
+  const el = document.getElementById('profiles-list');
+  try {
+    const r = await fetch('/api/profiles_list'); const d = await r.json();
+    const profiles = d.profiles || d;
+    if (!Array.isArray(profiles) || !profiles.length) { el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">👤</div><div class="empty-state-title">No Profiles</div><div class="empty-state-desc">Use the CLI to create profiles: hermes profile create</div></div>'; return; }
+    el.innerHTML = profiles.map(p => `<div class="list-item"><div class="list-item-icon">👤</div><div class="list-item-body"><div class="list-item-title">${p.name || p}</div></div></div>`).join('');
+  } catch(e) { el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">👤</div><div class="empty-state-title">Profiles</div><div class="empty-state-desc">Use hermes profile create to manage profiles.</div></div>'; }
+}
+loadProfiles();
+</script>

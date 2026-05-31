@@ -1,0 +1,2 @@
+class CachedMemory < ApplicationRecord
+end

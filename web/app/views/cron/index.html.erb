@@ -1,0 +1,58 @@
+<% content_for :title, "Cron — Hermes Wingman" %>
+<% content_for :header_title, "CRON // SCHEDULER" %>
+
+<div style="max-width: 1000px; margin: 0 auto;">
+  <% if @error %>
+    <div style="background: color-mix(in srgb, var(--accent-red) 10%, transparent); border: 1px solid color-mix(in srgb, var(--accent-red) 30%, transparent); border-radius: var(--radius-lg); padding: 12px 16px; margin-bottom: 16px;">
+      <span style="color: var(--accent-red); font-size: 12px;">⚠ <%= @error %></span>
+    </div>
+  <% end %>
+
+  <div style="display: flex; flex-direction: column; gap: 12px;">
+    <% if @jobs.any? %>
+      <% @jobs.each do |job| %>
+        <% j = job.is_a?(Hash) ? job : (job.respond_to?(:attributes) ? job.attributes : {}) %>
+        <div class="glass-card" style="padding: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <div style="font-size: 13px; color: var(--text-primary); font-weight: 600;">
+                <%= j["name"].presence || j["id"].presence || "Unnamed Job" %>
+              </div>
+              <div style="font-size: 10px; color: var(--text-muted); font-family: var(--font-mono); margin-top: 4px;">
+                ID: <%= j["id"].to_s.length > 24 ? "…#{j['id'].to_s.last(16)}" : j["id"] %> · 
+                Schedule: <%= j["schedule"].presence || "—" %> ·
+                Status: <span style="color: <%= j["status"] == "active" ? "var(--success)" : "var(--warning)" %>"><%= j["status"].presence || "active" %></span>
+              </div>
+              <% if j["last_run"] || j["next_run"] %>
+                <div style="font-size: 10px; color: var(--text-muted); margin-top: 2px;">
+                  Last: <%= j["last_run"].presence || "—" %> · Next: <%= j["next_run"].presence || "—" %>
+                </div>
+              <% end %>
+              <% if j["prompt"].present? %>
+                <div style="font-size: 11px; color: var(--text-secondary); margin-top: 6px; font-family: var(--font-mono);">
+                  <%= j["prompt"].truncate(100) %>
+                </div>
+              <% end %>
+            </div>
+            <div style="display: flex; gap: 6px;">
+              <%= form_tag toggle_cron_job_path(j["id"]), method: :post, style: "margin: 0;" do %>
+                <button type="submit" class="btn" style="font-size: 10px; padding: 4px 10px;">
+                  <%= j["status"] == "active" ? "⏸ Pause" : "▶ Resume" %>
+                </button>
+              <% end %>
+              <%= form_tag run_cron_job_path(j["id"]), method: :post, style: "margin: 0;" do %>
+                <button type="submit" class="btn btn-primary" style="font-size: 10px; padding: 4px 10px;">▶ Run Now</button>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    <% else %>
+      <div class="glass-card" style="padding: 48px; text-align: center;">
+        <div style="font-size: 32px; margin-bottom: 8px;">⏰</div>
+        <div style="color: var(--text-muted); font-size: 13px;">No cron jobs configured</div>
+        <div style="color: var(--text-muted); font-size: 11px; margin-top: 4px;">Use <code style="background: var(--bg-input); padding: 2px 6px; border-radius: 4px;">hermes cron create</code> to add one</div>
+      </div>
+    <% end %>
+  </div>
+</div>

@@ -1,0 +1,40 @@
+<% content_for :title, "Webhooks — Hermes Wingman" %>
+<% content_for :header_title, "WEBHOOKS // INTEGRATIONS" %>
+
+<div style="max-width: 1000px; margin: 0 auto;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+    <span style="font-size: 11px; font-family: var(--font-mono); color: var(--text-muted); letter-spacing: 1px;"><%= @webhooks.length %> WEBHOOKS</span>
+    <a href="/webhooks/new" class="btn btn-primary" style="text-decoration: none; font-size: 11px;">+ New Webhook</a>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 12px;">
+    <% if @webhooks.any? %>
+      <% @webhooks.each do |hook| %>
+        <div class="glass-card" style="padding: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <div style="font-size: 13px; color: var(--text-primary); font-weight: 600;"><%= hook.name %></div>
+              <div style="font-size: 11px; color: var(--accent-tertiary); font-family: var(--font-mono); margin-top: 4px;"><%= hook.url %></div>
+              <div style="font-size: 10px; color: var(--text-muted); margin-top: 2px;">
+                Events: <%= hook.events.presence || "all" %>
+                · <span style="color: <%= hook.active ? "var(--success)" : "var(--text-muted)" %>"><%= hook.active ? "Active" : "Disabled" %></span>
+              </div>
+            </div>
+            <div style="display: flex; gap: 6px;">
+              <a href="<%= edit_webhook_path(hook) %>" class="btn" style="font-size: 10px; padding: 4px 10px; text-decoration: none;">Edit</a>
+              <%= form_tag webhook_path(hook), method: :delete, style: "margin: 0;", data: { confirm: "Delete webhook?" } do %>
+                <button type="submit" class="btn btn-danger" style="font-size: 10px; padding: 4px 10px;">Del</button>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    <% else %>
+      <div class="glass-card" style="padding: 48px; text-align: center;">
+        <div style="font-size: 32px; margin-bottom: 8px;">📡</div>
+        <div style="color: var(--text-muted); font-size: 13px;">No webhooks configured</div>
+        <div style="color: var(--text-muted); font-size: 11px; margin-top: 4px;">Create webhooks to trigger external services on events</div>
+      </div>
+    <% end %>
+  </div>
+</div>

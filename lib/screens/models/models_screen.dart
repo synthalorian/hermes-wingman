@@ -365,9 +365,9 @@ class _ModelsScreenState extends State<ModelsScreen> {
             const SizedBox(height: 24),
           ],
 
-          // Local models (synthclaw from llama-swap)
+          // Local models (synthshark from llama-swap)
           if (_localModels.isNotEmpty) ...[
-            _sectionHeader(scheme, '🎹🦞 SYNTHCLAW  (${_localModels.length})'),
+            _sectionHeader(scheme, '🎹🦈 SYNTHSHARK  (${_localModels.length})'),
             const SizedBox(height: 8),
             ...List.generate(_localModels.length, (i) {
               final m = _localModels[i];
@@ -446,14 +446,14 @@ class _ModelsScreenState extends State<ModelsScreen> {
     final isAvailable = source == 'available';
     final probedStatus = _probedStatus[name];
 
-    // Detect synthclaw models by name
-    final isSynthclaw = name.contains('synthclaw');
-    final isSynthclawLocal = isSynthclaw && isLocal;
+    // Detect synthshark models by name
+    final isSynthshark = name.contains('synthshark');
+    final isSynthsharkLocal = isSynthshark && isLocal;
 
     // Determine dot color
     Color dotColor;
-    if (isSynthclawLocal) {
-      dotColor = const Color(0xFFFF00FF); // hot pink — synthclaw signature
+    if (isSynthsharkLocal) {
+      dotColor = const Color(0xFFFF00FF); // hot pink — synthshark signature
     } else if (isLocal) {
       dotColor = scheme.primary;
     } else if (isConfigured) {
@@ -494,7 +494,7 @@ class _ModelsScreenState extends State<ModelsScreen> {
                   decoration: BoxDecoration(
                     color: dotColor,
                     shape: BoxShape.circle,
-                    boxShadow: isSynthclawLocal
+                    boxShadow: isSynthsharkLocal
                         ? [BoxShadow(color: const Color(0xFFFF00FF).withValues(alpha: 0.6), blurRadius: 4)]
                         : null,
                   ),
@@ -514,7 +514,7 @@ class _ModelsScreenState extends State<ModelsScreen> {
                               fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
                             )),
                           ),
-                          if (isSynthclawLocal) ...[
+                          if (isSynthsharkLocal) ...[
                             const SizedBox(width: 6),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
@@ -522,7 +522,7 @@ class _ModelsScreenState extends State<ModelsScreen> {
                                 gradient: const LinearGradient(colors: [Color(0xFF8F00FF), Color(0xFFFF00FF)]),
                                 borderRadius: BorderRadius.circular(3),
                               ),
-                              child: Text('🎹🦞', style: TextStyle(fontSize: 8, height: 1.2)),
+                              child: Text('🎹🦈', style: TextStyle(fontSize: 8, height: 1.2)),
                             ),
                           ],
                         ],

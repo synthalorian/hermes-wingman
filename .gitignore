@@ -59,3 +59,14 @@ wingman_probed.json
 wingman_settings.json
 *.apk
 *.aab
+
+# Rails web dashboard
+web/tmp/*
+web/log/*
+web/.bundle/
+web/vendor/bundle/
+web/public/assets/
+web/storage/*
+web/node_modules/
+web/config/*.key
+

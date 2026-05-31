@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="<%= session[:theme] || 'hermes' %>">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= content_for?(:title) ? yield(:title) : 'Hermes Wingman' %></title>
+  <%= csrf_meta_tags %>
+  <%= csp_meta_tag %>
+  <%= stylesheet_link_tag "tailwind", "data-turbo-track": "reload" %>
+  <%= javascript_importmap_tags %>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>body { margin: 0; background: var(--bg-primary); color: var(--text-primary); font-family: var(--font-sans); }</style>
+</head>
+<body>
+  <div class="app-shell">
+    <!-- ── Sidebar ────────────────────────────────────────────────────── -->
+    <nav class="sidebar">
+      <a href="/" class="sidebar-logo" title="Dashboard">
+        <img src="/assets/hermes-wingman.png" alt="HW" style="width:32px;height:32px;border-radius:6px;object-fit:cover">
+      </a>
+      <div class="sidebar-divider"></div>
+
+      <% nav_items = [
+        ['/', '▦', 'Dashboard'],
+        ['/chat', '💬', 'Chat'],
+        ['/models', '🧠', 'Models'],
+        ['/providers', '🔑', 'Providers'],
+        ['/sessions', '📋', 'Sessions'],
+        ['/skills', '🔮', 'Skills'],
+        ['/memory', '💾', 'Memory'],
+        ['/files', '📁', 'Files'],
+        ['/missions', '🎯', 'Missions'],
+        ['/profiles', '👤', 'Profiles'],
+        ['/config', '🔧', 'Config'],
+        ['/logs', '📜', 'Logs'],
+        ['/cron_jobs', '⏰', 'Cron'],
+        ['/gateway', '🔌', 'Gateway'],
+        ['/gateway_setup', '⚙', 'GW Setup'],
+        ['/tools', '⚡', 'Tools'],
+        ['/cli_tools', '🛠', 'CLI Tools'],
+        ['/inspector', '🔍', 'Inspector'],
+        ['/webhooks', '📡', 'Webhooks'],
+        ['/usage', '📊', 'Usage'],
+        ['/setup', '✨', 'Setup'],
+      ] %>
+
+      <% nav_items.each do |path, icon, label| %>
+        <% is_active = current_page?(path) %>
+        <a href="<%= path %>"
+           class="sidebar-item <%= 'active' if is_active %>"
+           title="<%= label %>"><%= icon %></a>
+      <% end %>
+
+      <div style="flex:1;"></div>
+      <div class="sidebar-divider"></div>
+
+      <!-- Backend status -->
+      <div id="backend-status" class="sidebar-item" style="cursor:default; font-size:12px;" title="Checking backend...">
+        <span class="status-dot busy"></span>
+      </div>
+
+      <!-- Theme picker -->
+      <button onclick="document.getElementById('theme-picker').showModal()"
+              class="sidebar-item" style="border:none; background:none; cursor:pointer; font-size:16px;"
+              title="Switch Theme">🎨</button>
+    </nav>
+
+    <!-- ── Main Content ───────────────────────────────────────────────── -->
+    <div class="main-content">
+      <header class="header">
+        <div class="flex items-center gap-6">
+          <span class="header-title"><%= yield(:header_title).presence || 'HERMES WINGMAN' %></span>
+          <span id="model-badge" class="header-badge">—</span>
+        </div>
+        <span id="version-badge" class="header-badge">—</span>
+      </header>
+
+      <div class="page-content animate-fade-in">
+        <%= yield %>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Theme Picker Dialog ──────────────────────────────────────────── -->
+  <dialog id="theme-picker" class="theme-dialog">
+    <div class="flex items-center justify-between mb-6">
+      <span style="font-size:14px; font-weight:600;">Choose Theme</span>
+      <button onclick="this.closest('dialog').close()" class="btn btn-icon" style="font-size:14px;">✕</button>
+    </div>
+    <div class="theme-grid">
+      <% themes = [
+        ['synthwave84', '🌆', "Synthwave '84"], ['synthwave84-light', '☀️', 'Synthwave Light'],
+        ['outrun', '🏎️', 'Outrun'], ['vaporwave', '🌴', 'Vaporwave'],
+        ['cyberpunk', '🤖', 'Cyberpunk'], ['hermes', '🐚', 'Hermes'],
+        ['zeus', '⚡', 'Zeus'], ['hera', '👑', 'Hera'],
+        ['poseidon', '🌊', 'Poseidon'], ['hades', '🔥', 'Hades'],
+        ['ares', '⚔️', 'Ares'], ['apollo', '☀️', 'Apollo'],
+        ['artemis', '🏹', 'Artemis'], ['athena', '🦉', 'Athena'],
+        ['aphrodite', '🌹', 'Aphrodite'], ['dionysus', '🍷', 'Dionysus'],
+        ['demeter', '🌾', 'Demeter'], ['hephaestus', '🔨', 'Hephaestus'],
+        ['hestia', '🔥', 'Hestia'], ['nyx', '🌙', 'Nyx'],
+        ['eos', '🌅', 'Eos'], ['hypnos', '💤', 'Hypnos'],
+        ['iris', '🌈', 'Iris'], ['tyche', '🍀', 'Tyche'],
+        ['thanatos', '💀', 'Thanatos'], ['nemesis', '⚖️', 'Nemesis'],
+        ['hecate', '🔮', 'Hecate'], ['light', '☀️', 'Light'],
+        ['dark', '🌙', 'Dark'],
+      ] %>
+      <% themes.each do |id, icon, name| %>
+        <form action="/theme/<%= id %>" method="post" style="margin:0;" data-turbo="false">
+          <%= token_tag %>
+          <button type="submit" class="theme-btn">
+            <span class="theme-btn-icon"><%= icon %></span>
+            <span><%= name %></span>
+          </button>
+        </form>
+      <% end %>
+    </div>
+  </dialog>
+
+  <!-- ── Global JS: backend health + model poller ─────────────────────── -->
+  <script>
+    const statusDot = document.querySelector('#backend-status .status-dot');
+    const verBadge = document.getElementById('version-badge');
+    const modBadge = document.getElementById('model-badge');
+
+    function checkHealth() {
+      fetch('/api/health').then(r=>r.json()).then(d => {
+        statusDot.className = 'status-dot ' + (d.hermes_installed ? 'online' : 'offline');
+        if (d.hermes_version) {
+          const v = (d.hermes_version.match(/v?(\d+\.\d+\.\d+)/)||[])[1] || '—';
+          verBadge.textContent = 'v' + v;
+        }
+      }).catch(() => { statusDot.className = 'status-dot offline'; });
+    }
+    function checkModel() {
+      fetch('/api/models').then(r=>r.json()).then(d => {
+        if (d.current) modBadge.textContent = d.current.split('/').pop();
+      }).catch(() => {});
+    }
+    checkHealth(); checkModel();
+    setInterval(checkHealth, 15000);
+    setInterval(checkModel, 30000);
+  </script>
+</body>
+</html>

@@ -1,0 +1,142 @@
+<% content_for :title, "Providers — Hermes Wingman" %>
+<% content_for :header_title, "PROVIDERS // AI BACKEND ROUTING" %>
+
+<div style="max-width: 1200px; margin: 0 auto;">
+
+  <% if @error.present? %>
+    <div style="
+      background: color-mix(in srgb, var(--accent-red) 10%, transparent);
+      border: 1px solid color-mix(in srgb, var(--accent-red) 30%, transparent);
+      border-radius: var(--radius-lg);
+      padding: 16px 20px;
+      margin-bottom: 24px;
+    ">
+      <div style="color: var(--accent-red); font-size: 12px; font-family: var(--font-mono);">
+        ⚠ <%= @error %>
+      </div>
+    </div>
+  <% end %>
+
+  <%# Header info %>
+  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <span style="font-size: 11px; font-family: var(--font-mono); color: var(--text-muted); letter-spacing: 1px;">ALL PROVIDERS</span>
+      <span style="
+        font-size: 9px;
+        font-family: var(--font-mono);
+        padding: 1px 6px;
+        border-radius: 3px;
+        background: color-mix(in srgb, var(--accent-cyan) 12%, transparent);
+        color: var(--accent-cyan);
+      "><%= @providers.is_a?(Array) ? @providers.length : 0 %></span>
+    </div>
+    <a href="<%= models_path %>" style="font-size: 10px; color: var(--accent-tertiary); text-decoration: none;">← Back to Models</a>
+  </div>
+
+  <% providers_data = @providers.is_a?(Array) ? @providers : (@providers.is_a?(Hash) ? @providers.values : []) %>
+
+  <% if providers_data.any? %>
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 14px;">
+      <% providers_data.each do |provider| %>
+        <% name = provider.is_a?(Hash) ? (provider['name'] || provider['id'] || provider.keys.first) : provider.to_s %>
+        <% provider_info = provider.is_a?(Hash) ? provider : {} %>
+        <% ptype = provider_info['type'] || provider_info['provider_type'] %>
+        <% base_url = provider_info['base_url'] || provider_info['url'] %>
+        <% status = provider_info['status'] || provider_info['state'] %>
+        <% online = status.present? && %w[online ok active connected ready].include?(status.downcase) %>
+
+        <div class="glass-card" style="padding: 18px; display: flex; flex-direction: column; gap: 12px;">
+          <%# Provider row %>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="
+              width: 32px; height: 32px;
+              display: flex; align-items: center; justify-content: center;
+              border-radius: 8px;
+              font-size: 16px;
+              background: color-mix(in srgb, var(--accent-cyan) 10%, transparent);
+            ">
+              <% case ptype&.downcase
+                 when 'openai', 'openrouter' %>🌐
+              <% when 'ollama', 'llamacpp', 'llama.cpp', 'local' %>🖥️
+              <% when 'anthropic', 'claude' %>🤖
+              <% when 'google', 'gemini' %>🔬
+              <% when 'groq' %>⚡
+              <% else %>🔌
+              <% end %>
+            </span>
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-size: 13px; color: var(--text-primary); font-weight: 600; font-family: var(--font-mono);">
+                <%= name %>
+              </div>
+              <% if ptype.present? %>
+                <div style="font-size: 10px; color: var(--text-muted); font-family: var(--font-mono); margin-top: 2px;">
+                  <%= ptype %>
+                </div>
+              <% end %>
+            </div>
+            <% if status.present? %>
+              <div class="status-dot <%= online ? 'connected' : 'disconnected' %>" style="flex-shrink: 0;"></div>
+            <% end %>
+          </div>
+
+          <%# Base URL %>
+          <% if base_url.present? %>
+            <div style="
+              font-size: 10px;
+              font-family: var(--font-mono);
+              color: var(--text-muted);
+              padding: 6px 8px;
+              border-radius: 4px;
+              background: var(--bg-input);
+              word-break: break-all;
+            ">
+              <%= base_url %>
+            </div>
+          <% end %>
+
+          <%# Status Badge + Details %>
+          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <% if status.present? %>
+              <span style="
+                font-size: 9px;
+                padding: 2px 6px;
+                border-radius: 3px;
+                font-family: var(--font-mono);
+                background: color-mix(in srgb, <%= online ? 'var(--accent-green)' : 'var(--accent-red)' %> 12%, transparent);
+                color: <%= online ? 'var(--accent-green)' : 'var(--accent-red)' %>;
+              "><%= status.upcase %></span>
+            <% end %>
+            <% if provider_info['provider'] %>
+              <span style="font-size: 9px; color: var(--text-muted); font-family: var(--font-mono);">
+                ID: <%= provider_info['provider'] %>
+              </span>
+            <% end %>
+          </div>
+
+          <%# Probe button %>
+          <div style="display: flex; gap: 8px; margin-top: 4px;">
+            <%= form_tag probe_provider_path(name), method: :post, style: "margin: 0;" do %>
+              <%= token_tag %>
+              <button type="submit" class="btn" style="font-size: 10px; padding: 4px 10px;">
+                Probe
+              </button>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  <% else %>
+    <div style="
+      text-align: center;
+      padding: 48px 16px;
+      border-radius: var(--radius-lg);
+      border: 1px dashed var(--border-light);
+    ">
+      <div style="font-size: 40px; margin-bottom: 12px;">🔌</div>
+      <div style="font-size: 14px; color: var(--text-primary); font-weight: 600; margin-bottom: 4px;">No Providers Found</div>
+      <div style="font-size: 11px; color: var(--text-muted);">
+        Configure providers in your Hermes config or run setup to auto-detect them.
+      </div>
+    </div>
+  <% end %>
+</div>
