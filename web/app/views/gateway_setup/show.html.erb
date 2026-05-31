@@ -1,0 +1,22 @@
+<div class="page-content">
+  <div class="section-header">
+    <h1 class="section-title">Gateway Setup</h1>
+  </div>
+
+  <div class="card-glass">
+    <div class="card-body">
+      <p class="text-dim">Configure gateway platforms to connect Hermes to external services.</p>
+      <div class="mt-8">
+        <% if @platforms.present? %>
+          <pre class="text-mono text-sm"><%= JSON.pretty_generate(@platforms) %></pre>
+        <% else %>
+          <div class="empty-state">
+            <div class="empty-state-icon">🔌</div>
+            <div class="empty-state-title">No platforms configured</div>
+            <div class="empty-state-desc">Use the Hermes CLI to add gateway platforms.</div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>

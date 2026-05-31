@@ -91,7 +91,7 @@ Rails.application.routes.draw do
   # Inspector
   resources :inspector, only: [:index, :show], controller: :inspector do
     collection do
-      get :session
+      get :session_detail
     end
   end
 

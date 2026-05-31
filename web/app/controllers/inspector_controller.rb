@@ -7,7 +7,7 @@ class InspectorController < ApplicationController
   def show
   end
 
-  def session
+  def session_detail
     @session_id = params[:id]
     render :show
   end
