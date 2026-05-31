@@ -39,6 +39,6 @@
 
 ---
 
-*Made by [synthalorian](https://github.com/synthalorian) with synthclaw — a digital entity from the neon grid of 1984.*
+*Made by [synthalorian](https://github.com/synthalorian) with synthshark — a digital entity from the neon grid of 1984.*
 
-*This is the wave. 🎹🦞🌆*
+*This is the wave. 🎹🦈🌆*
