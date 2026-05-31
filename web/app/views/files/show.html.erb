@@ -1,0 +1,83 @@
+<% content_for :title, "File Explorer — Hermes Wingman" %>
+<% content_for :header_title, "Files" %>
+
+<div class="card">
+  <div class="card-header" style="gap:8px">
+    <div class="flex items-center gap-2" style="display:flex;align-items:center;gap:6px;flex:1">
+      <button class="btn btn-sm btn-ghost" onclick="navigateTo('/')">/</button>
+      <span style="color:var(--text-muted)">|</span>
+      <button class="btn btn-sm btn-ghost" onclick="navigateTo('')">~</button>
+      <span id="cur-path" style="font-family:var(--font-mono);font-size:11px;color:var(--text-secondary);margin-left:8px">/</span>
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="newFolder()">+ Folder</button>
+    <button class="btn btn-sm btn-ghost" onclick="loadFiles(currentPath)">⟳</button>
+  </div>
+  <div id="files-list" class="card-body">
+    <div class="empty-state"><div class="spinner"></div></div>
+  </div>
+</div>
+
+<script>
+let currentPath = '';
+
+function navigateTo(p) { currentPath = p; loadFiles(p); }
+
+async function loadFiles(path) {
+  const el = document.getElementById('files-list');
+  document.getElementById('cur-path').textContent = path || '~';
+  try {
+    const r = await fetch(`/api/files?path=${encodeURIComponent(path)}`); const d = await r.json();
+    const dirs = d.directories || []; const files = d.files || [];
+    if (!dirs.length && !files.length) { el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📁</div><div class="empty-state-title">Empty</div></div>'; return; }
+    let html = '';
+    if (path) html += `<div class="list-item" style="cursor:pointer;opacity:0.6" onclick="navigateTo('${path.substring(0,path.lastIndexOf('/'))}')"><div class="list-item-icon">📂</div><div class="list-item-body"><div class="list-item-title">..</div></div></div>`;
+    dirs.forEach(d => { html += `<div class="list-item" style="cursor:pointer" onclick="navigateTo('${path ? path+'/'+d : d}')"><div class="list-item-icon">📁</div><div class="list-item-body"><div class="list-item-title">${d}</div></div><div class="list-item-action"><button class="btn btn-sm btn-ghost" onclick="showFileMenu('${path ? path+'/'+d : d}',true,event)">⋯</button></div></div>`; });
+    files.forEach(f => { html += `<div class="list-item" style="cursor:pointer" onclick="viewFile('${path ? path+'/'+f : f}')"><div class="list-item-icon">📄</div><div class="list-item-body"><div class="list-item-title">${f}</div></div><div class="list-item-action"><button class="btn btn-sm btn-ghost" onclick="showFileMenu('${path ? path+'/'+f : f}',false,event)">⋯</button></div></div>`; });
+    el.innerHTML = html;
+  } catch(e) { el.innerHTML = `<div class="empty-state"><div>${e.message}</div></div>`; }
+}
+
+function showFileMenu(path, isDir, e) {
+  e.stopPropagation();
+  const actions = [
+    isDir ? 'Open' : 'View',
+    'Copy Path',
+    'Rename',
+    isDir ? 'Delete Directory' : 'Delete'
+  ];
+  const choice = prompt(`${path}\n\n1: ${actions[0]}\n2: Copy Path\n3: Rename\n4: Delete\n\nEnter choice (1-4) or Cancel:`);
+  if (!choice) return;
+  if (choice === '1') { isDir ? navigateTo(path) : viewFile(path); }
+  else if (choice === '2') { navigator.clipboard.writeText(path); }
+  else if (choice === '3') { const n = prompt('New name:'); if(n) renameFile(path, n); }
+  else if (choice === '4') { if(confirm(`Delete ${path}?`)) deleteFile(path); }
+}
+
+async function viewFile(path) {
+  try {
+    const r = await fetch(`/api/files_read?path=${encodeURIComponent(path)}`); const d = await r.json();
+    if (d.content !== undefined) {
+      document.getElementById('files-list').innerHTML = `<div style="padding:8px;margin-bottom:8px;display:flex;gap:8px;align-items:center"><button class="btn btn-sm btn-ghost" onclick="loadFiles(currentPath)">← Back</button><span style="font-family:var(--font-mono);font-size:11px">${path}</span></div><pre style="background:var(--bg-tertiary);padding:16px;border-radius:8px;font-size:11px;overflow:auto;max-height:500px;white-space:pre-wrap">${escapeHtml(d.content)}</pre>`;
+    } else { alert('Cannot read file'); }
+  } catch(e) { alert('Error: '+e.message); }
+}
+
+async function renameFile(path, newName) {
+  await fetch('/api/file_rename', {method:'POST', headers:{'Content-Type':'application/json','X-CSRF-Token':document.querySelector('[name=csrf-token]')?.content}, body:JSON.stringify({path, new_name: newName})});
+  loadFiles(currentPath);
+}
+
+async function deleteFile(path) {
+  await fetch('/api/file_delete', {method:'POST', headers:{'Content-Type':'application/json','X-CSRF-Token':document.querySelector('[name=csrf-token]')?.content}, body:JSON.stringify({path})});
+  loadFiles(currentPath);
+}
+
+async function newFolder() {
+  const name = prompt('Folder name:');
+  if (!name) return;
+  await fetch('/api/file_mkdir', {method:'POST', headers:{'Content-Type':'application/json','X-CSRF-Token':document.querySelector('[name=csrf-token]')?.content}, body:JSON.stringify({path: currentPath, name})});
+  loadFiles(currentPath);
+}
+function escapeHtml(s) { const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
+loadFiles('');
+</script>

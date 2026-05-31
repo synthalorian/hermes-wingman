@@ -1,0 +1,27 @@
+<% content_for :title, "Logs — Hermes Wingman" %>
+<% content_for :header_title, "LOGS // TAIL" %>
+
+<div style="max-width: 1200px; margin: 0 auto;">
+  <!-- Level Filter -->
+  <div class="glass-card" style="padding: 12px 16px; margin-bottom: 16px;">
+    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+      <span style="font-size: 11px; font-family: var(--font-mono); color: var(--text-muted);">FILTER:</span>
+      <% ["all", "info", "warning", "error"].each do |lvl| %>
+        <a href="<%= logs_path(level: lvl, lines: @lines) %>" class="btn <%= 'btn-primary' if @level == lvl %>" style="
+          font-size: 10px; padding: 4px 12px; text-decoration: none;
+          <%= 'color: var(--accent-primary); border-color: var(--accent-primary);' if @level == lvl %>
+        "><%= lvl.upcase %></a>
+      <% end %>
+      <span style="flex: 1;"></span>
+      <span style="font-size: 10px; color: var(--text-muted); font-family: var(--font-mono);"><%= @entries.length %> entries</span>
+    </div>
+  </div>
+
+  <!-- Log Entries (Turbo Stream target) -->
+  <div class="glass-card" style="padding: 16px;">
+    <%= render partial: 'logs/entries', locals: { entries: @entries } %>
+  </div>
+
+  <!-- Auto-refresh via Stimulus polling -->
+  <div data-controller="log-poll" data-log-poll-url-value="<%= live_logs_path(level: @level, lines: @lines) %>" data-log-poll-interval-value="5000"></div>
+</div>

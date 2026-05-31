@@ -1,0 +1,23 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  name: MyString
+  description: MyText
+  status: MyString
+  agent_count: 1
+  agents: MyText
+  tasks: MyText
+  results: MyText
+  started_at: 2026-05-24 23:29:48
+  completed_at: 2026-05-24 23:29:48
+
+two:
+  name: MyString
+  description: MyText
+  status: MyString
+  agent_count: 1
+  agents: MyText
+  tasks: MyText
+  results: MyText
+  started_at: 2026-05-24 23:29:48
+  completed_at: 2026-05-24 23:29:48

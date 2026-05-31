@@ -1,0 +1,21 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  identifier: MyString
+  name: MyString
+  description: MyText
+  default_model: MyString
+  default_provider: MyString
+  config_overrides: MyText
+  skills: MyText
+  theme: MyString
+
+two:
+  identifier: MyString
+  name: MyString
+  description: MyText
+  default_model: MyString
+  default_provider: MyString
+  config_overrides: MyText
+  skills: MyText
+  theme: MyString

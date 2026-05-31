@@ -1,0 +1,23 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  name: MyString
+  description: MyText
+  prompt: MyText
+  schedule: MyString
+  status: MyString
+  max_turns: 1
+  last_run_at: 2026-05-24 23:29:46
+  next_run_at: 2026-05-24 23:29:46
+  output: MyText
+
+two:
+  name: MyString
+  description: MyText
+  prompt: MyText
+  schedule: MyString
+  status: MyString
+  max_turns: 1
+  last_run_at: 2026-05-24 23:29:46
+  next_run_at: 2026-05-24 23:29:46
+  output: MyText

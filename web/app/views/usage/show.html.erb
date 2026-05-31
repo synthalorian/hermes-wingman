@@ -1,0 +1,52 @@
+<% content_for :title, "Usage — Hermes Wingman" %>
+<% content_for :header_title, "USAGE // ANALYTICS" %>
+
+<div style="max-width: 1000px; margin: 0 auto;">
+  <% if @error %>
+    <div style="background: color-mix(in srgb, var(--accent-red) 10%, transparent); border: 1px solid color-mix(in srgb, var(--accent-red) 30%, transparent); border-radius: var(--radius-lg); padding: 12px 16px; margin-bottom: 16px;">
+      <span style="color: var(--accent-red); font-size: 12px;">⚠ <%= @error %></span>
+    </div>
+  <% end %>
+
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
+    <div class="glass-card" style="padding: 20px;">
+      <div style="font-size: 11px; font-family: var(--font-mono); color: var(--text-muted); letter-spacing: 1px;">MODEL</div>
+      <div style="font-size: 18px; color: var(--accent-tertiary); margin-top: 8px; font-weight: 600;"><%= @models["current"].presence || "—" %></div>
+    </div>
+    <div class="glass-card" style="padding: 20px;">
+      <div style="font-size: 11px; font-family: var(--font-mono); color: var(--text-muted); letter-spacing: 1px;">PROVIDER</div>
+      <div style="font-size: 18px; color: var(--accent-primary); margin-top: 8px; font-weight: 600;"><%= @models["provider"].presence || "—" %></div>
+    </div>
+    <div class="glass-card" style="padding: 20px;">
+      <div style="font-size: 11px; font-family: var(--font-mono); color: var(--text-muted); letter-spacing: 1px;">STATUS</div>
+      <div style="font-size: 18px; color: var(--success); margin-top: 8px; font-weight: 600;">
+        <%= @health["hermes_installed"] ? "Online" : "Offline" %>
+      </div>
+    </div>
+    <div class="glass-card" style="padding: 20px;">
+      <div style="font-size: 11px; font-family: var(--font-mono); color: var(--text-muted); letter-spacing: 1px;">SNAPSHOTS</div>
+      <div style="font-size: 18px; color: var(--accent-secondary); margin-top: 8px; font-weight: 600;"><%= @snapshots.length %></div>
+    </div>
+  </div>
+
+  <% if @snapshots.any? %>
+    <div class="glass-card" style="padding: 20px;">
+      <div style="font-size: 11px; font-family: var(--font-mono); color: var(--text-muted); letter-spacing: 1px; margin-bottom: 16px;">RECORDED SNAPSHOTS</div>
+      <div style="display: flex; flex-direction: column; gap: 6px;">
+        <% @snapshots.each do |snap| %>
+          <div style="display: flex; justify-content: space-between; padding: 8px 12px; border-radius: var(--radius-md); border: 1px solid var(--border-light); font-size: 11px; font-family: var(--font-mono);">
+            <span style="color: var(--text-muted);"><%= snap.recorded_at&.to_fs(:db) || "—" %></span>
+            <span style="color: var(--text-primary);"><%= snap.session_count || 0 %> sessions</span>
+            <span style="color: var(--accent-tertiary);"><%= snap.token_count || 0 %> tokens</span>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% else %>
+    <div class="glass-card" style="padding: 48px; text-align: center;">
+      <div style="font-size: 32px; margin-bottom: 8px;">📊</div>
+      <div style="color: var(--text-muted); font-size: 13px;">No usage data yet</div>
+      <div style="color: var(--text-muted); font-size: 11px; margin-top: 4px;">Usage snapshots will appear as they're recorded</div>
+    </div>
+  <% end %>
+</div>

@@ -1,0 +1,2 @@
+class OrchestrationRun < ApplicationRecord
+end

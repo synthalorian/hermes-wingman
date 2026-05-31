@@ -1,0 +1,41 @@
+<% content_for :title, "Gateway — Hermes Wingman" %>
+<% content_for :header_title, "Gateway" %>
+
+<div class="card">
+  <div class="card-header">
+    <span class="section-title">Messaging Gateway</span>
+    <button class="btn btn-primary btn-sm" onclick="loadGateway()">⟳</button>
+  </div>
+  <div id="gateway-status" class="card-body">
+    <div class="empty-state"><div class="spinner"></div></div>
+  </div>
+</div>
+<script>
+async function loadGateway() {
+  const el = document.getElementById('gateway-status');
+  try {
+    const r = await fetch('/api/gateway'); const d = await r.json();
+    const running = d.running;
+    const platforms = d.platforms || [];
+    let html = `<div style="display:flex;gap:8px;margin-bottom:12px;align-items:center">
+      <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${running ? 'var(--success)' : 'var(--text-muted)'}"></span>
+      <span style="font-size:13px;font-weight:600">${running ? 'Running' : 'Stopped'}</span>
+      <button class="btn btn-sm btn-primary" style="margin-left:auto" onclick="toggleGateway('${running ? 'stop' : 'start'}')">${running ? 'Stop' : 'Start'}</button>
+    </div>`;
+    if (platforms.length) {
+      html += platforms.map(p => `<div class="list-item">
+        <div class="list-item-icon" style="color:${p.isConnected ? 'var(--success)' : 'var(--text-muted)'}">${p.name === 'discord' ? '🎮' : p.name === 'telegram' ? '📱' : '🔌'}</div>
+        <div class="list-item-body"><div class="list-item-title">${p.name}</div><div class="list-item-subtitle">${p.isConnected ? '✓ Connected' : p.error || 'Disconnected'}</div></div>
+      </div>`).join('');
+    } else {
+      html += '<div class="empty-state"><div class="empty-state-icon">🔌</div><div class="empty-state-desc">No platforms configured.</div></div>';
+    }
+    el.innerHTML = html;
+  } catch(e) { el.innerHTML = `<div class="empty-state"><div>${e.message}</div></div>`; }
+}
+async function toggleGateway(action) {
+  await fetch('/gateway/toggle', {method:'POST', headers:{'Content-Type':'application/json','X-CSRF-Token':document.querySelector('[name=csrf-token]')?.content}, body:JSON.stringify({action})});
+  loadGateway();
+}
+loadGateway();
+</script>

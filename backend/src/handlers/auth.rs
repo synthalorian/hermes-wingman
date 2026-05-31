@@ -1,6 +1,5 @@
 use axum::{extract::{Path, State}, response::Json};
 use std::sync::Arc;
-use serde::Deserialize;
 use crate::state::AppState;
 use crate::platform::hermes_binary_path;
 use crate::helpers::read_file;

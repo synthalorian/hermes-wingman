@@ -1,0 +1,2 @@
+class CachedSkill < ApplicationRecord
+end

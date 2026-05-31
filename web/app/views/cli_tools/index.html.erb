@@ -1,0 +1,85 @@
+<% content_for :title, "CLI Tools — Hermes Wingman" %>
+<% content_for :header_title, "CLI Tools" %>
+
+<div class="card">
+  <div class="card-header">
+    <span class="section-title">🩺 Diagnostics</span>
+  </div>
+  <div class="card-body" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px">
+    <button class="btn btn-outline btn-block" onclick="runCli('doctor')"><span class="text-sm">🩺 Run Doctor</span></button>
+    <button class="btn btn-outline btn-block" onclick="runCli('security')"><span class="text-sm">🔒 Security Audit</span></button>
+    <button class="btn btn-outline btn-block" onclick="runCli('dump')"><span class="text-sm">📄 Setup Dump</span></button>
+    <button class="btn btn-outline btn-block" onclick="runCli('debug')"><span class="text-sm">🐛 Debug Report</span></button>
+  </div>
+</div>
+
+<div class="card mt-4">
+  <div class="card-header">
+    <span class="section-title">💾 Data Management</span>
+  </div>
+  <div class="card-body" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px">
+    <button class="btn btn-outline btn-block" onclick="runCli('backup')"><span class="text-sm">💾 Quick Backup</span></button>
+    <button class="btn btn-outline btn-block" onclick="runCli('checkpoints')"><span class="text-sm">📦 Checkpoints</span></button>
+  </div>
+</div>
+
+<div class="card mt-4">
+  <div class="card-header">
+    <span class="section-title">🔌 Integrations</span>
+  </div>
+  <div class="card-body" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px">
+    <button class="btn btn-outline btn-block" onclick="runCli('proxy')"><span class="text-sm">↔️ Proxy Status</span></button>
+    <button class="btn btn-outline btn-block" onclick="runCli('secrets')"><span class="text-sm">🔐 Secrets</span></button>
+    <button class="btn btn-outline btn-block" onclick="runCli('pairing')"><span class="text-sm">👥 Pairing</span></button>
+    <button class="btn btn-outline btn-block" onclick="runCli('hooks')"><span class="text-sm">⚡ Shell Hooks</span></button>
+    <button class="btn btn-outline btn-block" onclick="runCli('mcp')"><span class="text-sm">🔌 MCP Servers</span></button>
+    <button class="btn btn-outline btn-block" onclick="runCli('plugins')"><span class="text-sm">🧩 Plugins</span></button>
+    <button class="btn btn-outline btn-block" onclick="runCli('curator')"><span class="text-sm">🤖 Curator</span></button>
+    <button class="btn btn-outline btn-block" onclick="runCli('webhooks')"><span class="text-sm">📡 Webhooks</span></button>
+    <button class="btn btn-outline btn-block" onclick="runCli('fallback')"><span class="text-sm">🔄 Fallback Chain</span></button>
+  </div>
+</div>
+
+<div class="card mt-4">
+  <div class="card-header">
+    <span class="section-title">📊 Analytics</span>
+  </div>
+  <div class="card-body" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px">
+    <button class="btn btn-outline btn-block" onclick="runCli('insights')"><span class="text-sm">📈 Insights (7d)</span></button>
+  </div>
+</div>
+
+<div id="cli-output" class="card mt-4" style="display:none">
+  <div class="card-header">
+    <span class="section-title" id="cli-output-title">Output</span>
+    <button class="btn btn-sm btn-ghost" onclick="document.getElementById('cli-output').style.display='none'">✕</button>
+  </div>
+  <div class="card-body">
+    <pre id="cli-output-text" style="background:var(--bg-tertiary);padding:16px;border-radius:8px;font-size:11px;max-height:400px;overflow:auto;white-space:pre-wrap"></pre>
+  </div>
+</div>
+
+<script>
+async function runCli(cmd) {
+  const out = document.getElementById('cli-output');
+  const title = document.getElementById('cli-output-title');
+  const text = document.getElementById('cli-output-text');
+  out.style.display = 'block';
+  title.textContent = `Running: ${cmd}...`;
+  text.textContent = 'Working...';
+
+  const endpoint = `/api/cli_${cmd}`;
+  const opts = {};
+  if (cmd === 'backup') opts.method = 'POST';
+
+  try {
+    const res = await fetch(endpoint, { ...opts, headers: {'Accept': 'application/json'} });
+    const data = await res.json();
+    title.textContent = `${cmd} — Result`;
+    text.textContent = data.output || data.status || data.dump || data.webhooks || data.hooks || data.users || data.plugins || data.servers || data.insights || data.chain?.join('\n') || data.stdout || JSON.stringify(data, null, 2);
+  } catch(e) {
+    title.textContent = `${cmd} — Error`;
+    text.textContent = `Error: ${e.message}`;
+  }
+}
+</script>

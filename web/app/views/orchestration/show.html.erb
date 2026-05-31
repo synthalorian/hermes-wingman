@@ -1,0 +1,58 @@
+<% content_for :title, "Orchestration — Hermes Wingman" %>
+<% content_for :header_title, "ORCHESTRATION // MULTI-AGENT" %>
+
+<div style="max-width: 1000px; margin: 0 auto;">
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px;">
+    <!-- New Orchestration -->
+    <div class="glass-card" style="padding: 20px;">
+      <div style="font-size: 11px; font-family: var(--font-mono); color: var(--text-muted); letter-spacing: 1px; margin-bottom: 16px;">NEW ORCHESTRATION</div>
+      <%= form_tag create_run_orchestration_path, method: :post do %>
+        <div style="margin-bottom: 12px;">
+          <input type="text" name="name" placeholder="Orchestration name..." style="
+            width: 100%; padding: 8px 12px;
+            background: var(--bg-input); color: var(--text-primary);
+            border: 1px solid var(--border-light); border-radius: var(--radius-md);
+            font-size: 12px; font-family: var(--font-mono);
+          ">
+        </div>
+        <div style="margin-bottom: 12px;">
+          <textarea name="description" placeholder="Description..." style="
+            width: 100%; padding: 8px 12px; height: 60px;
+            background: var(--bg-input); color: var(--text-primary);
+            border: 1px solid var(--border-light); border-radius: var(--radius-md);
+            font-size: 12px; font-family: var(--font-mono);
+          "></textarea>
+        </div>
+        <div style="margin-bottom: 12px;">
+          <input type="text" name="agents" placeholder="Agent list (comma-separated)" value="hermes" style="
+            width: 100%; padding: 8px 12px;
+            background: var(--bg-input); color: var(--text-primary);
+            border: 1px solid var(--border-light); border-radius: var(--radius-md);
+            font-size: 12px; font-family: var(--font-mono);
+          ">
+        </div>
+        <button type="submit" class="btn btn-primary" style="font-size: 12px; width: 100%;">Start Orchestration</button>
+      <% end %>
+    </div>
+
+    <!-- Stats -->
+    <div class="glass-card" style="padding: 20px;">
+      <div style="font-size: 11px; font-family: var(--font-mono); color: var(--text-muted); letter-spacing: 1px; margin-bottom: 16px;">HISTORY</div>
+      <% if @runs.any? %>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <% @runs.first(5).each do |run| %>
+            <div style="padding: 8px 12px; border-radius: var(--radius-md); border: 1px solid var(--border-light);">
+              <div style="font-size: 11px; color: var(--text-primary); font-family: var(--font-mono);"><%= run.name %></div>
+              <div style="font-size: 10px; color: var(--text-muted); margin-top: 2px;">
+                Status: <span style="color: <%= run.status == "completed" ? "var(--success)" : run.status == "running" ? "var(--warning)" : "var(--text-muted)" %>"><%= run.status %></span>
+                · <%= run.agent_count %> agents
+              </div>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <div style="text-align: center; padding: 24px; color: var(--text-muted); font-size: 12px;">No orchestration runs yet</div>
+      <% end %>
+    </div>
+  </div>
+</div>

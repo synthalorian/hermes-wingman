@@ -1,4 +1,4 @@
-use axum::{extract::Path, http::StatusCode, response::Json};
+use axum::{extract::Path, response::Json};
 use serde::{Deserialize};
 use crate::platform::run_hermes;
 
@@ -108,7 +108,7 @@ pub async fn hermes_skills_toggle(
         _ => vec!["skills", "toggle", &name],
     };
     match run_hermes(&args) {
-        Ok((stdout, stderr, code)) => {
+        Ok((stdout, _stderr, code)) => {
             Json(serde_json::json!({
                 "success": code == 0,
                 "name": name,

@@ -89,11 +89,11 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.synthclaw" "\0"
+            VALUE "CompanyName", "com.synthshark" "\0"
             VALUE "FileDescription", "hermes_wingman" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "hermes_wingman" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 com.synthclaw. All rights reserved." "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 com.synthshark. All rights reserved." "\0"
             VALUE "OriginalFilename", "hermes_wingman.exe" "\0"
             VALUE "ProductName", "hermes_wingman" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"

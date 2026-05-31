@@ -1,0 +1,17 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  name: MyString
+  url: MyString
+  events: MyText
+  secret: MyString
+  active: false
+  last_triggered_at: 2026-05-24 23:29:58
+
+two:
+  name: MyString
+  url: MyString
+  events: MyText
+  secret: MyString
+  active: false
+  last_triggered_at: 2026-05-24 23:29:58
