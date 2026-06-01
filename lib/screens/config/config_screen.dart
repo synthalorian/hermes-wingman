@@ -1,13 +1,15 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../theme/theme_manager.dart';
 import '../../theme/app_theme.dart';
 import '../../services/hermes_service.dart';
 import '../../services/hermes_api_client.dart' show BackendService;
 import '../../services/wingman_settings.dart';
 
-final bool _isMobile = Platform.isAndroid || Platform.isIOS;
+bool get _isMobile => Platform.isAndroid || Platform.isIOS;
 
 class ConfigScreen extends StatefulWidget {
   const ConfigScreen({super.key});
@@ -341,7 +343,8 @@ class _ConfigScreenState extends State<ConfigScreen> {
             color: scheme.primary.withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(6),
             child: InkWell(
-              borderRadius: BorderRadius.circular(6),                          onTap: () async {
+              borderRadius: BorderRadius.circular(6),
+              onTap: () async {
                 final changed = await WingmanSettings.showConnectionDialog(context);
                 if (changed == true && mounted) {
                   // Reconnect backend
@@ -363,7 +366,77 @@ class _ConfigScreenState extends State<ConfigScreen> {
               ),
             ),
           ),
+          const SizedBox(width: 8),
+          // QR Scan button (mobile only)
+          Material(
+            color: scheme.accent.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(6),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(6),
+              onTap: () => _showQRScanner(context),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.qr_code_scanner, size: 12, color: scheme.accent),
+                    const SizedBox(width: 4),
+                    Text('Scan', style: TextStyle(color: scheme.accent, fontSize: 10, fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ),
+            ),
+          ),
         ],
+      ),
+    );
+  }
+
+  // ── QR Scanner (mobile) ─────────────────────────────────────────────────
+
+  void _showQRScanner(BuildContext context) {
+    final scheme = Provider.of<ThemeManager>(context, listen: false).currentScheme;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (ctx) => Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(
+            backgroundColor: Colors.black.withAlpha(180),
+            elevation: 0,
+            title: Text('Scan QR Code', style: TextStyle(color: scheme.text, fontSize: 15)),
+            leading: IconButton(
+              icon: Icon(Icons.close, color: scheme.text),
+              onPressed: () => Navigator.of(ctx).pop(),
+            ),
+          ),
+          body: _QRScannerOverlay(
+            onDetect: (String data) async {
+              Navigator.of(ctx).pop();
+              // Parse IP:PORT from QR data
+              final parts = data.split(':');
+              if (parts.length >= 2) {
+                final host = parts.sublist(0, parts.length - 1).join(':');
+                final port = int.tryParse(parts.last) ?? 9120;
+                final settings = context.read<WingmanSettings>();
+                await settings.setBackendUrl(host, port);
+                if (mounted && context.mounted) {
+                  final backend = context.read<BackendService>();
+                  backend.setBaseUrl(host, port);
+                  await backend.reconnect();
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Connected to $host:$port', style: TextStyle(color: scheme.text, fontSize: 12)),
+                        backgroundColor: scheme.surface,
+                        duration: const Duration(seconds: 2),
+                      ),
+                    );
+                  }
+                }
+              }
+            },
+          ),
+        ),
       ),
     );
   }
@@ -586,6 +659,42 @@ class _ConfigScreenState extends State<ConfigScreen> {
             style: TextStyle(color: scheme.textMuted, fontSize: 10, height: 1.4),
           ),
           const SizedBox(height: 8),
+          // QR Code for easy mobile pairing
+          if (primaryIP != '—') ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: scheme.borderDim.withAlpha(60), width: 0.5),
+              ),
+              child: Column(
+                children: [
+                  QrImageView(
+                    data: connString,
+                    version: QrVersions.auto,
+                    size: 180,
+                    backgroundColor: Colors.white,
+                    eyeStyle: const QrEyeStyle(
+                      eyeShape: QrEyeShape.square,
+                      color: Colors.black,
+                    ),
+                    dataModuleStyle: const QrDataModuleStyle(
+                      dataModuleShape: QrDataModuleShape.square,
+                      color: Colors.black,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Scan with your phone',
+                    style: TextStyle(color: Colors.black87, fontSize: 11, fontWeight: FontWeight.w500),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+          ],
           // Connection info
           Container(
             padding: const EdgeInsets.all(10),
@@ -879,4 +988,123 @@ class _ProviderField extends StatelessWidget {
       ],
     );
   }
+}
+
+// ── QR Scanner Overlay (mobile) ──────────────────────────────────────────
+
+class _QRScannerOverlay extends StatefulWidget {
+  final void Function(String data) onDetect;
+
+  const _QRScannerOverlay({required this.onDetect});
+
+  @override
+  State<_QRScannerOverlay> createState() => _QRScannerOverlayState();
+}
+
+class _QRScannerOverlayState extends State<_QRScannerOverlay> {
+  bool _detected = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        // Camera preview
+        Positioned.fill(
+          child: MobileScanner(
+            onDetect: (capture) {
+              if (_detected) return;
+              final barcodes = capture.barcodes;
+              for (final barcode in barcodes) {
+                final raw = barcode.rawValue;
+                if (raw != null && raw.isNotEmpty) {
+                  setState(() => _detected = true);
+                  widget.onDetect(raw);
+                  return;
+                }
+              }
+            },
+          ),
+        ),
+        // Overlay frame
+        Positioned.fill(
+          child: CustomPaint(
+            painter: _ScannerFramePainter(),
+          ),
+        ),
+        // Instructions
+        Positioned(
+          bottom: 60,
+          left: 0,
+          right: 0,
+          child: Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.black.withAlpha(180),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Text(
+                'Point camera at the QR code on your desktop',
+                style: TextStyle(color: Colors.white, fontSize: 12),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+        ),
+        if (_detected)
+          const Positioned.fill(
+            child: Center(
+              child: CircularProgressIndicator(color: Colors.white),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _ScannerFramePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.black.withAlpha(160)
+      ..style = PaintingStyle.fill;
+
+    final frameSize = size.width * 0.7;
+    final left = (size.width - frameSize) / 2;
+    final top = (size.height - frameSize) / 2;
+
+    // Draw dark overlay with cutout
+    final path = Path()
+      ..addRect(Rect.fromLTWH(0, 0, size.width, size.height))
+      ..addRect(Rect.fromLTWH(left, top, frameSize, frameSize));
+    path.fillType = PathFillType.evenOdd;
+    canvas.drawPath(path, paint);
+
+    // Draw corner brackets
+    final cornerPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3;
+
+    final cornerLength = frameSize * 0.15;
+
+    // Top-left
+    canvas.drawLine(Offset(left, top), Offset(left + cornerLength, top), cornerPaint);
+    canvas.drawLine(Offset(left, top), Offset(left, top + cornerLength), cornerPaint);
+
+    // Top-right
+    canvas.drawLine(Offset(left + frameSize, top), Offset(left + frameSize - cornerLength, top), cornerPaint);
+    canvas.drawLine(Offset(left + frameSize, top), Offset(left + frameSize, top + cornerLength), cornerPaint);
+
+    // Bottom-left
+    canvas.drawLine(Offset(left, top + frameSize), Offset(left + cornerLength, top + frameSize), cornerPaint);
+    canvas.drawLine(Offset(left, top + frameSize), Offset(left, top + frameSize - cornerLength), cornerPaint);
+
+    // Bottom-right
+    canvas.drawLine(Offset(left + frameSize, top + frameSize), Offset(left + frameSize - cornerLength, top + frameSize), cornerPaint);
+    canvas.drawLine(Offset(left + frameSize, top + frameSize), Offset(left + frameSize, top + frameSize - cornerLength), cornerPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
