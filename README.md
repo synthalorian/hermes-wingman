@@ -327,8 +327,8 @@ cd ../hermes_wingman_web && bin/rails server
 If Hermes Wingman helps you work faster, smoother, or cooler — consider buying me a coffee!
 
 <p align="center">
-  <a href="https://buymeacoffee.com/yourusername">
-    <img src="https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=☕&slug=yourusername&button_colour=5F7FFF&font_colour=ffffff&font_family=Cookie&outline_colour=000000&coffee_colour=FFDD00" alt="Buy Me a Coffee">
+  <a href="https://buymeacoffee.com/synthalorian">
+    <img src="https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=☕&slug=synthalorian&button_colour=5F7FFF&font_colour=ffffff&font_family=Cookie&outline_colour=000000&coffee_colour=FFDD00" alt="Buy Me a Coffee">
   </a>
 </p>
 
