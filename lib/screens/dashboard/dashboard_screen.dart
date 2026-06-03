@@ -535,7 +535,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   scheme: scheme,
                   icon: Icons.favorite_outline,
                   label: 'Buy Me a Coffee',
-                  onTap: () => launchUrl(Uri.parse('https://buymeacoffee.com/yourusername')),
+                  onTap: () => launchUrl(Uri.parse('https://buymeacoffee.com/synthalorian')),
                 ),
               ),
             ],
