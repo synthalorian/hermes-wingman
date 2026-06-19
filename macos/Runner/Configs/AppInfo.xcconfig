@@ -8,7 +8,7 @@
 PRODUCT_NAME = hermes_wingman
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = com.synthshark.hermesWingman
+PRODUCT_BUNDLE_IDENTIFIER = com.synthclaw.hermesWingman
 
 // The copyright displayed in application information
-PRODUCT_COPYRIGHT = Copyright © 2026 com.synthshark. All rights reserved.
+PRODUCT_COPYRIGHT = Copyright © 2026 com.synthclaw. All rights reserved.

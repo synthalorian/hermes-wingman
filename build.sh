@@ -139,4 +139,4 @@ case "$target" in
 esac
 
 echo ""
-echo "🎹🦈  Hermes Wingman built successfully for $target!"
+echo "🎹🦞  Hermes Wingman built successfully for $target!"
