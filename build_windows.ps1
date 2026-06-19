@@ -3,7 +3,7 @@
 # Builds both the Rust backend and the Flutter app for Windows.
 # Requires: Rust (cargo), Flutter SDK, Visual Studio Build Tools
 
-Write-Host "🎹🦈  Building Hermes Wingman for Windows..." -ForegroundColor Cyan
+Write-Host "🎹🦞  Building Hermes Wingman for Windows..." -ForegroundColor Cyan
 
 # 1. Build Rust backend
 Write-Host "▸ Building Rust backend..." -ForegroundColor Yellow

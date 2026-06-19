@@ -82,6 +82,6 @@ The same 29 themes from the Flutter app are available in the web dashboard. Them
 
 ---
 
-Made by **synth** ([synthalorian](https://github.com/synthalorian)) with **synthshark** 🎹🦈.
+Made by **synth** ([synthalorian](https://github.com/synthalorian)) with **synthclaw** 🎹🦞.
 
-*This is the wave. 🎹🦈🌆*
+*This is the wave. 🎹🦞🌆*
