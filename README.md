@@ -17,6 +17,8 @@
   <img src="https://img.shields.io/badge/backend-Rust-orange" alt="Rust">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
   <img src="https://img.shields.io/badge/version-1.0.0-red" alt="Version">
+  <img src="https://img.shields.io/badge/status-active-brightgreen" alt="Status">
+  <img src="https://img.shields.io/badge/contributing-guide-blue" alt="Contributing">
 </p>
 
 ---
@@ -81,6 +83,29 @@ Hermes Wingman replaces the entire Hermes CLI with a beautiful, full-featured GU
 5. The backend makes **direct API calls** to providers (OpenAI, Anthropic, llama-swap) for fast streaming responses, or shells out to the **Hermes CLI** for OAuth-based providers (Nous, xAI).
 
 ---
+
+## Build
+
+```bash
+# Full stack build
+cd backend && cargo build --release && cd ..
+flutter build linux --release
+flutter build apk --debug
+```
+
+## Run
+
+```bash
+# Rust backend
+BIND_ADDR=0.0.0.0:9120 backend/target/release/hermes-wingman-backend &
+
+# Flutter desktop
+flutter run
+
+# Rails web app
+cd ../hermes_wingman_web && bin/rails server
+```
+
 
 ## 🚀 Getting Started
 
