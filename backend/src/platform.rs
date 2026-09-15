@@ -55,7 +55,7 @@ pub fn find_hermes_binary() -> Option<String> {
     {
         let local = std::env::var("LOCALAPPDATA")
             .unwrap_or_else(|_| "C:\\Users\\Default\\AppData\\Local".into());
-        let paths = vec![
+        let paths = [
             format!("{}\\hermes\\hermes.exe", local),
             format!("{}\\hermes\\Scripts\\hermes.exe", local),
             format!("{}\\Python\\Scripts\\hermes.exe", local),
