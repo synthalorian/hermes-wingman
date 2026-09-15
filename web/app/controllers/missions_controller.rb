@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class MissionsController < ApplicationController
-  before_action :set_mission, only: [:show, :edit, :update, :destroy, :run, :cancel]
+  before_action :set_mission, only: [ :show, :edit, :update, :destroy, :run, :cancel ]
 
   def index
     @missions = Mission.order(created_at: :desc)

@@ -6,7 +6,7 @@ Rails.application.routes.draw do
   get "up", to: "dashboard#health"
 
   # Chat
-  resource :chat, only: [:show, :create], controller: :chat do
+  resource :chat, only: [ :show, :create ], controller: :chat do
     collection do
       post :send_message
       get :stream, defaults: { format: :json }
@@ -14,14 +14,14 @@ Rails.application.routes.draw do
   end
 
   # Sessions
-  resources :sessions, only: [:index, :show, :destroy] do
+  resources :sessions, only: [ :index, :show, :destroy ] do
     member do
       post :resume
     end
   end
 
   # Models
-  resources :models, only: [:index] do
+  resources :models, only: [ :index ] do
     member do
       post :switch
       post :probe
@@ -32,10 +32,10 @@ Rails.application.routes.draw do
   end
 
   # Config
-  resource :config, only: [:show, :update], controller: :config
+  resource :config, only: [ :show, :update ], controller: :config
 
   # Logs
-  resources :logs, only: [:index, :show], controller: :logs do
+  resources :logs, only: [ :index, :show ], controller: :logs do
     collection do
       get :tail
       get :live
@@ -43,7 +43,7 @@ Rails.application.routes.draw do
   end
 
   # Cron Jobs
-  resources :cron_jobs, only: [:index], controller: :cron do
+  resources :cron_jobs, only: [ :index ], controller: :cron do
     member do
       post :toggle
       post :run
@@ -51,45 +51,45 @@ Rails.application.routes.draw do
   end
 
   # Gateway
-  resource :gateway, only: [:show], controller: :gateway do
+  resource :gateway, only: [ :show ], controller: :gateway do
     member do
       post :toggle
     end
   end
 
   # Providers
-  resources :providers, only: [:index] do
+  resources :providers, only: [ :index ] do
     member do
       post :probe
     end
   end
 
   # Skills
-  resources :skills, only: [:index] do
+  resources :skills, only: [ :index ] do
     member do
       post :toggle
     end
   end
 
   # Memory
-  resources :memory, only: [:index, :show, :update, :destroy], controller: :memory do
+  resources :memory, only: [ :index, :show, :update, :destroy ], controller: :memory do
     collection do
       post :search
     end
   end
 
   # File Explorer
-  resource :files, only: [:show], controller: :files do
+  resource :files, only: [ :show ], controller: :files do
     get :browse
     get :read
     put :write
   end
 
   # Live Tools
-  resource :tools, only: [:show], controller: :tools
+  resource :tools, only: [ :show ], controller: :tools
 
   # Inspector
-  resources :inspector, only: [:index, :show], controller: :inspector do
+  resources :inspector, only: [ :index, :show ], controller: :inspector do
     collection do
       get :session_detail
     end
@@ -104,7 +104,7 @@ Rails.application.routes.draw do
   end
 
   # Orchestration
-  resource :orchestration, only: [:show], controller: :orchestration do
+  resource :orchestration, only: [ :show ], controller: :orchestration do
     collection do
       post :create_run
       get :status
@@ -119,22 +119,22 @@ Rails.application.routes.draw do
   end
 
   # Providers
-  resources :providers, only: [:index]
+  resources :providers, only: [ :index ]
 
   # CLI Tools
-  resource :cli_tools, only: [:show], controller: :cli_tools, path: '/cli_tools'
+  resource :cli_tools, only: [ :show ], controller: :cli_tools, path: "/cli_tools"
 
   # Gateway Setup
-  resource :gateway_setup, only: [:show], controller: :gateway_setup, path: '/gateway_setup'
+  resource :gateway_setup, only: [ :show ], controller: :gateway_setup, path: "/gateway_setup"
 
   # Webhooks
   resources :webhooks
 
   # Usage / Analytics
-  resource :usage, only: [:show], controller: :usage
+  resource :usage, only: [ :show ], controller: :usage
 
   # Setup wizard
-  resource :setup, only: [:show], controller: :setup do
+  resource :setup, only: [ :show ], controller: :setup do
     collection do
       post :install
       post :configure

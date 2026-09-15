@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class ProfilesController < ApplicationController
-  before_action :set_profile, only: [:show, :edit, :update, :destroy, :apply]
+  before_action :set_profile, only: [ :show, :edit, :update, :destroy, :apply ]
 
   def index
     @profiles = Profile.order(created_at: :desc)

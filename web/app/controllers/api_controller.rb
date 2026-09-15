@@ -53,5 +53,5 @@ class ApiController < ApplicationController
   def file_mkdir   = render(json: HermesApiService.create_directory(params[:path], params[:name]))
 
   # ── Profiles ────────────────────────────────────────────────────
-  def profiles_list = render(json: HermesApiService.run_hermes_command(["profile", "list"]))
+  def profiles_list = render(json: HermesApiService.run_hermes_command([ "profile", "list" ]))
 end

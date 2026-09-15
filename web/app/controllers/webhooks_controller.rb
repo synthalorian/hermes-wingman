@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class WebhooksController < ApplicationController
-  before_action :set_webhook, only: [:show, :edit, :update, :destroy]
+  before_action :set_webhook, only: [ :show, :edit, :update, :destroy ]
 
   def index
     @webhooks = Webhook.order(created_at: :desc)
