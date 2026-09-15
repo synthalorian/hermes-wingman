@@ -113,7 +113,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: hermes_wingman_web
+        working-directory: web
     steps:
       - uses: actions/checkout@v4
 
@@ -122,17 +122,7 @@ jobs:
         with:
           ruby-version: "3.3"
           bundler-cache: true
-          working-directory: hermes_wingman_web
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: yarn
-          cache-dependency-path: hermes_wingman_web/yarn.lock
-
-      - name: Install JS deps
-        run: yarn install --frozen-lockfile
+          working-directory: web
 
       - name: Precompile assets
         run: bundle exec rails assets:precompile
