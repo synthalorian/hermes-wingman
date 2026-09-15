@@ -154,8 +154,17 @@ pub async fn files_info(
         Ok(m) => m,
         Err(e) => return Json(serde_json::json!({"success": false, "error": e.to_string()})),
     };
-    use std::os::unix::fs::PermissionsExt;
-    let perms = metadata.permissions().mode();
+    #[cfg(unix)]
+    let perms = {
+        use std::os::unix::fs::PermissionsExt;
+        format!("{:o}", metadata.permissions().mode() & 0o777)
+    };
+    #[cfg(not(unix))]
+    let perms = if metadata.permissions().readonly() {
+        "444".to_string()
+    } else {
+        "666".to_string()
+    };
     let is_dir = metadata.is_dir();
     let size = metadata.len();
     let modified = metadata
@@ -172,7 +181,7 @@ pub async fn files_info(
         "is_dir": is_dir,
         "size": size,
         "modified": modified,
-        "permissions": format!("{:o}", perms & 0o777),
+        "permissions": perms,
     }))
 }
 
