@@ -48,7 +48,7 @@ pub async fn write_config(
     Json(body): Json<serde_json::Value>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
     let content = body["content"].as_str().ok_or(StatusCode::BAD_REQUEST)?;
-    std::fs::write(&state.config_path(), content).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    std::fs::write(state.config_path(), content).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
     Ok(Json(serde_json::json!({"success": true})))
 }
 
@@ -100,7 +100,7 @@ pub async fn update_config(
         }
     }
 
-    std::fs::write(&state.config_path(), &result).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    std::fs::write(state.config_path(), &result).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
     Ok(Json(serde_json::json!({"success": true})))
 }
 

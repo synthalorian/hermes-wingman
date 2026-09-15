@@ -171,7 +171,7 @@ pub async fn discover_models() -> ModelsResponse {
 pub fn probe_model_via_curl(model_name: &str, config: &serde_yaml::Value) -> (String, String) {
     // Determine which provider handles this model
     let prefix = model_name.split('/').next().unwrap_or("");
-    let model_short = model_name.split('/').last().unwrap_or(model_name);
+    let model_short = model_name.split('/').next_back().unwrap_or(model_name);
 
     // Map model prefix to config provider name
     let config_provider = match prefix {

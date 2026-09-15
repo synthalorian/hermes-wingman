@@ -53,7 +53,10 @@ pub async fn chat_stream_handler(
 
         // Determine provider
         let prefix = current_model.split('/').next().unwrap_or("");
-        let model_short = current_model.split('/').last().unwrap_or(current_model);
+        let model_short = current_model
+            .split('/')
+            .next_back()
+            .unwrap_or(current_model);
         let provider_name = match prefix {
             "x-ai" | "xai" | "grok" => {
                 let mut found = "xai-oauth";

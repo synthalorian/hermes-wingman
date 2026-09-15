@@ -228,7 +228,7 @@ pub async fn auto_configure(State(state): State<Arc<AppState>>) -> Json<serde_js
         }
 
         // Merge with existing providers (existing takes precedence)
-        if let Some(existing_provs) = mapping.get(&serde_yaml::Value::String("providers".into())) {
+        if let Some(existing_provs) = mapping.get(serde_yaml::Value::String("providers".into())) {
             if let Some(existing_map) = existing_provs.as_mapping() {
                 for (k, v) in existing_map {
                     providers_map.insert(k.clone(), v.clone());
@@ -246,7 +246,7 @@ pub async fn auto_configure(State(state): State<Arc<AppState>>) -> Json<serde_js
     let config_yaml = serde_yaml::to_string(&config_value)
         .unwrap_or_else(|_| format!("model: {}", default_model));
 
-    let _ = std::fs::write(&state.config_path(), &config_yaml);
+    let _ = std::fs::write(state.config_path(), &config_yaml);
 
     Json(serde_json::json!({
         "success": true,
@@ -347,7 +347,7 @@ pub async fn probe_provider_handler(
             let test_model = if model.is_empty() {
                 "deepseek-v4-flash"
             } else {
-                &model
+                model
             };
             let full_name = format!("deepseek/{}", test_model);
             match run_hermes(&["--model", &full_name, "--oneshot", "hi"]) {

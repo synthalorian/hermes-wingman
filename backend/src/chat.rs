@@ -33,7 +33,10 @@ pub fn handle_chat(req: ChatRequest, current_model_override: &str) -> ChatRespon
     if !current_model.is_empty() {
         // Determine provider for this model
         let prefix = current_model.split('/').next().unwrap_or("");
-        let model_short = current_model.split('/').last().unwrap_or(current_model);
+        let model_short = current_model
+            .split('/')
+            .next_back()
+            .unwrap_or(current_model);
 
         // Find the provider config for this model prefix
         let provider_name = match prefix {
@@ -175,7 +178,7 @@ pub fn handle_chat(req: ChatRequest, current_model_override: &str) -> ChatRespon
     }
 
     match run_hermes(&args) {
-        Ok((stdout, stderr, code)) if code == 0 => {
+        Ok((stdout, stderr, 0)) => {
             let session_id = if stderr.contains("session") {
                 let re = regex::Regex::new(r"session[=_ ]([a-zA-Z0-9_]+)").unwrap();
                 re.captures(&stderr)

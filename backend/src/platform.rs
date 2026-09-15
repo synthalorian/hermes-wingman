@@ -69,14 +69,14 @@ pub fn find_hermes_binary() -> Option<String> {
     #[cfg(not(target_os = "windows"))]
     {
         let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".into());
-        let paths = vec![
+        let paths = [
             format!("{}/.local/bin/hermes", home),
             "/usr/bin/hermes".into(),
             "/usr/local/bin/hermes".into(),
             "/opt/homebrew/bin/hermes".into(),
             format!(
                 "/Users/{}/.local/bin/hermes",
-                home.split('/').last().unwrap_or("")
+                home.split('/').next_back().unwrap_or("")
             ),
         ];
         paths

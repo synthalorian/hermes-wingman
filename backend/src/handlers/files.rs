@@ -19,10 +19,11 @@ pub fn resolve_fs_path(_state: &AppState, relative_path: &str) -> PathBuf {
         PathBuf::from(relative_path)
     } else if relative_path.is_empty() || relative_path == "." {
         PathBuf::from(&home)
-    } else if relative_path.starts_with("~/") {
-        PathBuf::from(&home).join(&relative_path[2..])
-    } else if relative_path.starts_with("./") {
-        PathBuf::from(&home).join(&relative_path[2..])
+    } else if let Some(stripped) = relative_path
+        .strip_prefix("~/")
+        .or_else(|| relative_path.strip_prefix("./"))
+    {
+        PathBuf::from(&home).join(stripped)
     } else {
         // Relative path — resolve from home
         PathBuf::from(&home).join(relative_path)
@@ -43,17 +44,15 @@ pub async fn files_list(
         Ok(entries) => {
             let mut files = Vec::new();
             let mut dirs = Vec::new();
-            for entry in entries {
-                if let Ok(entry) = entry {
-                    let name = entry.file_name().to_string_lossy().to_string();
-                    if name.starts_with('.') {
-                        continue;
-                    }
-                    if entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
-                        dirs.push(name);
-                    } else {
-                        files.push(name);
-                    }
+            for entry in entries.flatten() {
+                let name = entry.file_name().to_string_lossy().to_string();
+                if name.starts_with('.') {
+                    continue;
+                }
+                if entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
+                    dirs.push(name);
+                } else {
+                    files.push(name);
                 }
             }
             dirs.sort();

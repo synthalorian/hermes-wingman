@@ -6,14 +6,13 @@ use axum::{
     response::Json,
 };
 use serde::Deserialize;
-use std::path::PathBuf;
 use std::process::Command;
 use std::sync::Arc;
 
 // ── Gateway Platforms ───────────────────────────────────────────────────────
 
 /// Helper: read a value from ~/.hermes/.env
-pub fn get_env_value(key: &str, home: &PathBuf) -> String {
+pub fn get_env_value(key: &str, home: &std::path::Path) -> String {
     let env_path = home.join(".env");
     match read_file(&env_path) {
         Ok(content) => {
@@ -318,7 +317,7 @@ pub async fn gateway_service_action(Path(action): Path<String>) -> Json<serde_js
             Ok(mut child) => {
                 if let Some(stdin) = child.stdin.take() {
                     use std::io::Write;
-                    let _ = write!(&stdin, "y\n");
+                    let _ = writeln!(&stdin, "y");
                     drop(stdin);
                 }
                 match child.wait_with_output() {
@@ -393,7 +392,7 @@ pub async fn gateway_toggle(
         "start" => {
             // Start doesn't need confirmation
             match run_hermes(&["gateway", "start"]) {
-                Ok((_, _, code)) if code == 0 => {
+                Ok((_, _, 0)) => {
                     Json(serde_json::json!({"success": true, "action": "start", "running": true}))
                 }
                 Ok((_, stderr, _)) => Json(
@@ -417,7 +416,7 @@ pub async fn gateway_toggle(
                     // Send "y" to stdin for confirmation
                     if let Some(stdin) = child.stdin.take() {
                         use std::io::Write;
-                        let _ = write!(&stdin, "y\n");
+                        let _ = writeln!(&stdin, "y");
                         drop(stdin);
                     }
                     match child.wait_with_output() {
