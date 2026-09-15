@@ -1,21 +1,18 @@
-use axum::{extract::State, http::StatusCode, response::Json};
-use std::sync::Arc;
-use serde::Deserialize;
-use crate::state::AppState;
-use crate::platform::{hermes_binary_path, hermes_home_dir};
-use crate::helpers::{read_config, read_file, get_active_model};
-use std::process::Command;
-use crate::models::{discover_models, probe_model_via_curl, ModelsResponse};
 use crate::chat::{handle_chat, ChatRequest, ChatResponse};
+use crate::helpers::{get_active_model, read_config, read_file};
+use crate::models::{discover_models, probe_model_via_curl, ModelsResponse};
+use crate::platform::{hermes_binary_path, hermes_home_dir};
+use crate::state::AppState;
+use axum::{extract::State, http::StatusCode, response::Json};
+use serde::Deserialize;
+use std::process::Command;
+use std::sync::Arc;
 
 // ── HTTP Handlers ──────────────────────────────────────────────────────────
 
 pub async fn health(State(_state): State<Arc<AppState>>) -> Json<serde_json::Value> {
     let hermes_path = hermes_binary_path();
-    let hermes_check = Command::new(&hermes_path)
-        .arg("--version")
-        .output()
-        .ok();
+    let hermes_check = Command::new(&hermes_path).arg("--version").output().ok();
 
     let (installed, version) = match hermes_check {
         Some(output) if output.status.success() => {
@@ -36,9 +33,7 @@ pub async fn health(State(_state): State<Arc<AppState>>) -> Json<serde_json::Val
 pub async fn get_config(State(state): State<Arc<AppState>>) -> Json<serde_json::Value> {
     let raw = read_file(&state.config_path()).unwrap_or_default();
     let parsed: serde_json::Value = serde_yaml::from_str(&raw)
-        .map(|v: serde_yaml::Value| {
-            serde_json::to_value(v).unwrap_or(serde_json::Value::Null)
-        })
+        .map(|v: serde_yaml::Value| serde_json::to_value(v).unwrap_or(serde_json::Value::Null))
         .unwrap_or(serde_json::Value::Null);
 
     Json(serde_json::json!({
@@ -140,9 +135,13 @@ pub async fn switch_model(
                 *override_model = Some(model.clone());
                 eprintln!("[Hermes Wingman] Model override set to: {}", model);
             }
-            Json(serde_json::json!({"success": true, "model": model, "overridden": !model.is_empty()}))
+            Json(
+                serde_json::json!({"success": true, "model": model, "overridden": !model.is_empty()}),
+            )
         }
-        Err(e) => Json(serde_json::json!({"success": false, "error": format!("Lock poisoned: {}", e)})),
+        Err(e) => {
+            Json(serde_json::json!({"success": false, "error": format!("Lock poisoned: {}", e)}))
+        }
     }
 }
 
@@ -151,18 +150,20 @@ pub struct ProbeRequest {
     model: String,
 }
 
-pub async fn probe_model_handler(
-    Json(body): Json<ProbeRequest>,
-) -> Json<serde_json::Value> {
+pub async fn probe_model_handler(Json(body): Json<ProbeRequest>) -> Json<serde_json::Value> {
     let config = read_config();
     let (status, error) = probe_model_via_curl(&body.model, &config);
 
     // Cache probe result
     let cache_path = hermes_home_dir().join("wingman_probed.json");
     if let Ok(content) = read_file(&cache_path) {
-        let mut cache: serde_json::Value = serde_json::from_str(&content).unwrap_or(serde_json::json!({}));
+        let mut cache: serde_json::Value =
+            serde_json::from_str(&content).unwrap_or(serde_json::json!({}));
         cache[&body.model] = serde_json::json!({"status": status, "error": error, "probed_at": chrono::Utc::now().to_rfc3339()});
-        let _ = std::fs::write(&cache_path, serde_json::to_string_pretty(&cache).unwrap_or_default());
+        let _ = std::fs::write(
+            &cache_path,
+            serde_json::to_string_pretty(&cache).unwrap_or_default(),
+        );
     }
 
     Json(serde_json::json!({"model": body.model, "status": status, "error": error}))
@@ -177,9 +178,7 @@ pub async fn chat_handler(
 }
 
 /// Validate the current Hermes configuration.
-pub async fn validate_config(
-    State(state): State<Arc<AppState>>,
-) -> Json<serde_json::Value> {
+pub async fn validate_config(State(state): State<Arc<AppState>>) -> Json<serde_json::Value> {
     let raw = read_file(&state.config_path()).unwrap_or_default();
     match serde_yaml::from_str::<serde_yaml::Value>(&raw) {
         Ok(cfg) => {
@@ -201,6 +200,3 @@ pub async fn validate_config(
         })),
     }
 }
-
-
-

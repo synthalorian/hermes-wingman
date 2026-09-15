@@ -5,13 +5,13 @@ use axum::{
 use std::sync::Arc;
 use tower_http::cors::CorsLayer;
 
-mod platform;
-mod state;
-mod helpers;
-mod models;
 mod chat;
 mod handlers;
+mod helpers;
 mod middleware;
+mod models;
+mod platform;
+mod state;
 
 use state::AppState;
 
@@ -29,24 +29,45 @@ async fn main() {
         .route("/models/switch", post(handlers::models::switch_model))
         .route("/models/probe", post(handlers::models::probe_model_handler))
         .route("/chat", post(handlers::chat::chat_handler))
-        .route("/chat/stream", get(handlers::chat_stream::chat_stream_handler))
+        .route(
+            "/chat/stream",
+            get(handlers::chat_stream::chat_stream_handler),
+        )
         .route("/sessions", get(handlers::sessions::get_sessions))
         .route("/logs", get(handlers::logs::get_logs))
         .route("/gateway", get(handlers::gateway::get_gateway))
         .route("/gateway/toggle", post(handlers::gateway::gateway_toggle))
-        .route("/gateway/platforms", get(handlers::gateway::gateway_get_platforms))
-        .route("/gateway/configure/{platform}", post(handlers::gateway::gateway_configure_platform))
-        .route("/gateway/service/{action}", post(handlers::gateway::gateway_service_action))
+        .route(
+            "/gateway/platforms",
+            get(handlers::gateway::gateway_get_platforms),
+        )
+        .route(
+            "/gateway/configure/{platform}",
+            post(handlers::gateway::gateway_configure_platform),
+        )
+        .route(
+            "/gateway/service/{action}",
+            post(handlers::gateway::gateway_service_action),
+        )
         .route("/cron", get(handlers::cron::get_cron))
         .route("/providers", get(handlers::providers::get_providers))
         .route("/setup/detect", get(handlers::setup::detect_setup))
         .route("/setup/install", post(handlers::setup::install_hermes))
-        .route("/setup/auto-configure", post(handlers::setup::auto_configure))
-        .route("/setup/probe-provider", post(handlers::providers::probe_provider_handler))
+        .route(
+            "/setup/auto-configure",
+            post(handlers::setup::auto_configure),
+        )
+        .route(
+            "/setup/probe-provider",
+            post(handlers::providers::probe_provider_handler),
+        )
         .route("/hermes/version", get(handlers::skills::hermes_version))
         .route("/hermes/update", post(handlers::skills::hermes_update))
         .route("/hermes/skills", get(handlers::skills::hermes_skills))
-        .route("/hermes/skills/{name}/toggle", post(handlers::skills::hermes_skills_toggle))
+        .route(
+            "/hermes/skills/{name}/toggle",
+            post(handlers::skills::hermes_skills_toggle),
+        )
         .route("/hermes/command", post(handlers::cli::hermes_command))
         .route("/memory", get(handlers::memory::memory_list))
         .route("/memory/{id}", get(handlers::memory::memory_get))
@@ -60,12 +81,18 @@ async fn main() {
         .route("/files/rename", post(handlers::files::files_rename))
         .route("/files/mkdir", post(handlers::files::files_mkdir))
         .route("/auth/status", get(handlers::auth::auth_get_status))
-        .route("/auth/login/{provider}", post(handlers::auth::auth_start_oauth))
+        .route(
+            "/auth/login/{provider}",
+            post(handlers::auth::auth_start_oauth),
+        )
         .route("/auth/api-key", post(handlers::auth::auth_add_api_key))
         .route("/auth/logout/{provider}", post(handlers::auth::auth_logout))
         .route("/cli/fallback", get(handlers::cli::cli_fallback_list))
         .route("/cli/fallback/add", post(handlers::cli::cli_fallback_add))
-        .route("/cli/fallback/clear", post(handlers::cli::cli_fallback_clear))
+        .route(
+            "/cli/fallback/clear",
+            post(handlers::cli::cli_fallback_clear),
+        )
         .route("/cli/webhooks", get(handlers::cli::cli_webhook_list))
         .route("/cli/hooks", get(handlers::cli::cli_hooks_list))
         .route("/cli/plugins", get(handlers::cli::cli_plugins_list))
@@ -76,7 +103,10 @@ async fn main() {
         .route("/cli/dump", get(handlers::cli::cli_dump))
         .route("/cli/debug", get(handlers::cli::cli_debug_share))
         .route("/cli/backup", post(handlers::cli::cli_backup_create))
-        .route("/cli/checkpoints", get(handlers::cli::cli_checkpoints_status))
+        .route(
+            "/cli/checkpoints",
+            get(handlers::cli::cli_checkpoints_status),
+        )
         .route("/cli/proxy", get(handlers::cli::cli_proxy_status))
         .route("/cli/secrets", get(handlers::cli::cli_secrets_status))
         .route("/cli/pairing", get(handlers::cli::cli_pairing_list))

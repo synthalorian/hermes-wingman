@@ -1,8 +1,8 @@
+use crate::platform::hermes_home_dir;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use tokio::sync::oneshot;
-use crate::platform::hermes_home_dir;
 
 // ── State ─────────────────────────────────────────────────────────────────
 
@@ -44,4 +44,3 @@ impl AppState {
         self.logs_dir().join("agent.log")
     }
 }
-

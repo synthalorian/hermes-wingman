@@ -1,6 +1,6 @@
+use crate::state::AppState;
 use axum::{extract::State, response::Json};
 use std::sync::Arc;
-use crate::state::AppState;
 
 pub async fn get_metrics(State(state): State<Arc<AppState>>) -> Json<serde_json::Value> {
     let config_exists = state.config_path().exists();
@@ -15,5 +15,7 @@ pub async fn get_metrics(State(state): State<Arc<AppState>>) -> Json<serde_json:
 }
 
 pub async fn restart_backend() -> Json<serde_json::Value> {
-    Json(serde_json::json!({"success": true, "message": "Restart signal sent. The backend will exit and should be restarted by your process manager."}))
+    Json(
+        serde_json::json!({"success": true, "message": "Restart signal sent. The backend will exit and should be restarted by your process manager."}),
+    )
 }

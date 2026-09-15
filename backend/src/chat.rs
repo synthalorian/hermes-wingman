@@ -1,6 +1,6 @@
-use serde::{Deserialize, Serialize};
-use crate::helpers::{read_config, load_soul_md, oauth_providers};
+use crate::helpers::{load_soul_md, oauth_providers, read_config};
 use crate::platform::run_hermes;
+use serde::{Deserialize, Serialize};
 
 // ─── Chat ──────────────────────────────────────────────────────────────────
 
@@ -24,7 +24,8 @@ pub fn handle_chat(req: ChatRequest, current_model_override: &str) -> ChatRespon
     let current_model = if !current_model_override.is_empty() {
         current_model_override
     } else {
-        config["model"].as_str()
+        config["model"]
+            .as_str()
             .or_else(|| config["model"]["default"].as_str())
             .unwrap_or("")
     };
@@ -33,7 +34,7 @@ pub fn handle_chat(req: ChatRequest, current_model_override: &str) -> ChatRespon
         // Determine provider for this model
         let prefix = current_model.split('/').next().unwrap_or("");
         let model_short = current_model.split('/').last().unwrap_or(current_model);
-        
+
         // Find the provider config for this model prefix
         let provider_name = match prefix {
             "x-ai" | "xai" | "grok" => {
@@ -104,14 +105,23 @@ pub fn handle_chat(req: ChatRequest, current_model_override: &str) -> ChatRespon
             let payload_str = serde_json::to_string(&payload).unwrap_or_default();
 
             let mut curl = std::process::Command::new("curl");
-            curl.args(["-s", "--max-time", "120", "-X", "POST", &chat_url,
-                       "-H", "Content-Type: application/json",
-                       "-d", &payload_str]);
+            curl.args([
+                "-s",
+                "--max-time",
+                "120",
+                "-X",
+                "POST",
+                &chat_url,
+                "-H",
+                "Content-Type: application/json",
+                "-d",
+                &payload_str,
+            ]);
 
             if let Some(key) = &api_key {
                 if !key.is_empty() && key != "ollama-local" && key != "llama-swap-local" {
-            curl.arg("-H");
-            curl.arg(format!("Authorization: Bearer {}", key));
+                    curl.arg("-H");
+                    curl.arg(format!("Authorization: Bearer {}", key));
                 }
             }
 
@@ -123,13 +133,15 @@ pub fn handle_chat(req: ChatRequest, current_model_override: &str) -> ChatRespon
                             if let Some(choice) = choices.first() {
                                 let msg = &choice["message"];
                                 let content = msg["content"].as_str().unwrap_or("").to_string();
-                                let reasoning = msg["reasoning_content"].as_str().unwrap_or("").to_string();
-                                
+                                let reasoning =
+                                    msg["reasoning_content"].as_str().unwrap_or("").to_string();
+
                                 // Use reasoning content if main content is empty
                                 let response = if !content.is_empty() {
                                     content
                                 } else if !reasoning.is_empty() {
-                                    format!("[Thinking process omitted]\n{}", 
+                                    format!(
+                                        "[Thinking process omitted]\n{}",
                                         if reasoning.len() > 500 {
                                             format!("{}...", &reasoning[..500])
                                         } else {
@@ -195,4 +207,3 @@ pub fn handle_chat(req: ChatRequest, current_model_override: &str) -> ChatRespon
         },
     }
 }
-

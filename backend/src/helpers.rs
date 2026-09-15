@@ -1,7 +1,7 @@
-use std::collections::HashSet;
-use std::path::PathBuf;
 use crate::platform::{hermes_home_dir, run_hermes};
 use crate::state::AppState;
+use std::collections::HashSet;
+use std::path::PathBuf;
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -22,11 +22,19 @@ pub fn load_soul_md() -> String {
     match read_file(&soul_path) {
         Ok(content) => {
             let trimmed = content.trim().to_string();
-            eprintln!("[Hermes Wingman] Loaded SOUL.md ({} chars) from {}", trimmed.len(), soul_path.display());
+            eprintln!(
+                "[Hermes Wingman] Loaded SOUL.md ({} chars) from {}",
+                trimmed.len(),
+                soul_path.display()
+            );
             trimmed
         }
         Err(e) => {
-            eprintln!("[Hermes Wingman] No SOUL.md found at {}: {}", soul_path.display(), e);
+            eprintln!(
+                "[Hermes Wingman] No SOUL.md found at {}: {}",
+                soul_path.display(),
+                e
+            );
             String::new()
         }
     }
@@ -94,7 +102,8 @@ pub fn get_active_model(state: &AppState) -> String {
     }
     // Fall back to config.yaml
     let config = read_config();
-    config["model"].as_str()
+    config["model"]
+        .as_str()
         .map(|s| s.to_string())
         .or_else(|| config["model"]["default"].as_str().map(|s| s.to_string()))
         .unwrap_or_default()
@@ -173,7 +182,10 @@ pub fn classify_provider(name: &str, cfg: &serde_yaml::Value) -> ProviderType {
     if base_url.contains("localhost:11434") || base_url.contains("127.0.0.1:11434") {
         return ProviderType::Ollama;
     }
-    if name.ends_with("-oauth") || cfg["oauth"].is_mapping() || cfg["auth_type"].as_str() == Some("oauth") {
+    if name.ends_with("-oauth")
+        || cfg["oauth"].is_mapping()
+        || cfg["auth_type"].as_str() == Some("oauth")
+    {
         return ProviderType::CloudOAuth;
     }
     if cfg["api_key"].is_string() || cfg["api_key_env"].is_string() {
@@ -181,4 +193,3 @@ pub fn classify_provider(name: &str, cfg: &serde_yaml::Value) -> ProviderType {
     }
     ProviderType::Unknown
 }
-

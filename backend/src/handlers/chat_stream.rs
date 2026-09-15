@@ -1,13 +1,18 @@
 // ── Chat Streaming (SSE) ─────────────────────────────────────────────────
 
-use axum::{extract::{Query, State}, response::{Json, Sse, sse::Event}};
-use std::sync::Arc;
-use serde::{Deserialize};
-use crate::state::AppState;
-use crate::platform::{hermes_binary_path, run_hermes};
-use crate::helpers::{read_config, oauth_providers, get_active_model, build_chat_messages, read_file};
 use crate::handlers::setup::strip_think_tags_stream;
+use crate::helpers::{
+    build_chat_messages, get_active_model, oauth_providers, read_config, read_file,
+};
+use crate::platform::{hermes_binary_path, run_hermes};
+use crate::state::AppState;
+use axum::{
+    extract::{Query, State},
+    response::{sse::Event, Json, Sse},
+};
 use futures::Stream;
+use serde::Deserialize;
+use std::sync::Arc;
 
 #[derive(Deserialize)]
 pub struct ChatStreamQuery {
@@ -19,7 +24,6 @@ pub async fn chat_stream_handler(
     State(state): State<Arc<AppState>>,
     Query(query): Query<ChatStreamQuery>,
 ) -> Sse<impl Stream<Item = Result<Event, std::convert::Infallible>>> {
-    
     use tokio::sync::mpsc;
     use tokio_stream::wrappers::ReceiverStream;
 
@@ -33,7 +37,8 @@ pub async fn chat_stream_handler(
         let current_model = if !active_model.is_empty() {
             &active_model
         } else {
-            config["model"].as_str()
+            config["model"]
+                .as_str()
                 .or_else(|| config["model"]["default"].as_str())
                 .unwrap_or("")
         };
@@ -55,7 +60,10 @@ pub async fn chat_stream_handler(
                 if let Some(providers) = config["providers"].as_mapping() {
                     for (name, _) in providers {
                         let n = name.as_str().unwrap_or("");
-                        if n.contains("xai") || n.contains("grok") { found = n; break; }
+                        if n.contains("xai") || n.contains("grok") {
+                            found = n;
+                            break;
+                        }
                     }
                 }
                 found
@@ -68,11 +76,18 @@ pub async fn chat_stream_handler(
             _ => prefix,
         };
 
-        let base_url = config["providers"][provider_name]["base_url"].as_str().unwrap_or("").to_string();
-        let api_key = config["providers"][provider_name]["api_key"].as_str()
-            .or_else(|| config["providers"][provider_name]["api_key_env"].as_str()
-                .and_then(|env| std::env::var(env).ok())
-                .map(|s| Box::leak(s.into_boxed_str()) as &str))
+        let base_url = config["providers"][provider_name]["base_url"]
+            .as_str()
+            .unwrap_or("")
+            .to_string();
+        let api_key = config["providers"][provider_name]["api_key"]
+            .as_str()
+            .or_else(|| {
+                config["providers"][provider_name]["api_key_env"]
+                    .as_str()
+                    .and_then(|env| std::env::var(env).ok())
+                    .map(|s| Box::leak(s.into_boxed_str()) as &str)
+            })
             .unwrap_or("")
             .to_string();
 
@@ -84,10 +99,14 @@ pub async fn chat_stream_handler(
                     args = vec!["--resume", sid, "-z", &message];
                 }
             }
-            match std::process::Command::new(hermes_binary_path()).args(&args).output() {
+            match std::process::Command::new(hermes_binary_path())
+                .args(&args)
+                .output()
+            {
                 Ok(output) if output.status.success() => {
                     let out = String::from_utf8_lossy(&output.stdout);
-                    let evt = Event::default().data(serde_json::json!({"content": out}).to_string());
+                    let evt =
+                        Event::default().data(serde_json::json!({"content": out}).to_string());
                     let _ = tx.send(Ok(evt)).await;
                 }
                 _ => {
@@ -112,7 +131,8 @@ pub async fn chat_stream_handler(
         });
 
         let client = reqwest::Client::new();
-        let mut req = client.post(&chat_url)
+        let mut req = client
+            .post(&chat_url)
             .header("Content-Type", "application/json");
 
         if !api_key.is_empty() && api_key != "ollama-local" && api_key != "llama-swap-local" {
@@ -146,15 +166,24 @@ pub async fn chat_stream_handler(
                                     return;
                                 }
                                 if let Some(data) = line.strip_prefix("data: ") {
-                                    if let Ok(json) = serde_json::from_str::<serde_json::Value>(data) {
+                                    if let Ok(json) =
+                                        serde_json::from_str::<serde_json::Value>(data)
+                                    {
                                         if let Some(choices) = json["choices"].as_array() {
                                             if let Some(choice) = choices.first() {
-                                                let content = choice["delta"]["content"].as_str().unwrap_or("");
-                                                let raw = if !content.is_empty() { content } else { "" };
+                                                let content = choice["delta"]["content"]
+                                                    .as_str()
+                                                    .unwrap_or("");
+                                                let raw =
+                                                    if !content.is_empty() { content } else { "" };
                                                 // Strip <think>...</think> blocks with cross-chunk state
-                                                let delta = strip_think_tags_stream(raw, &mut in_think);
+                                                let delta =
+                                                    strip_think_tags_stream(raw, &mut in_think);
                                                 if !delta.is_empty() {
-                                                    let evt = Event::default().data(serde_json::json!({"content": delta}).to_string());
+                                                    let evt = Event::default().data(
+                                                        serde_json::json!({"content": delta})
+                                                            .to_string(),
+                                                    );
                                                     let _ = tx.send(Ok(evt)).await;
                                                 }
                                             }
@@ -164,7 +193,8 @@ pub async fn chat_stream_handler(
                             }
                         }
                         Err(e) => {
-                            let evt = Event::default().data(serde_json::json!({"error": e.to_string()}).to_string());
+                            let evt = Event::default()
+                                .data(serde_json::json!({"error": e.to_string()}).to_string());
                             let _ = tx.send(Ok(evt)).await;
                             break;
                         }
@@ -174,7 +204,8 @@ pub async fn chat_stream_handler(
                 let _ = tx.send(Ok(evt)).await;
             }
             Err(e) => {
-                let evt = Event::default().data(serde_json::json!({"error": e.to_string()}).to_string());
+                let evt =
+                    Event::default().data(serde_json::json!({"error": e.to_string()}).to_string());
                 let _ = tx.send(Ok(evt)).await;
                 let evt = Event::default().data("[DONE]");
                 let _ = tx.send(Ok(evt)).await;
@@ -195,9 +226,7 @@ pub struct SessionsQuery {
     limit: Option<u32>,
 }
 
-pub async fn get_sessions(
-    Query(query): Query<SessionsQuery>,
-) -> Json<serde_json::Value> {
+pub async fn get_sessions(Query(query): Query<SessionsQuery>) -> Json<serde_json::Value> {
     let limit = query.limit.unwrap_or(20).to_string();
     match run_hermes(&["sessions", "list", "--limit", &limit]) {
         Ok((stdout, _, _)) => {
@@ -257,24 +286,22 @@ pub async fn get_logs(
             }
             Json(serde_json::json!({"entries": entries, "count": entries.len()}))
         }
-        _ => {
-            match read_file(&state.agent_log()) {
-                Ok(content) => {
-                    let mut entries = Vec::new();
-                    let log_lines: Vec<&str> = content.lines().collect();
-                    for line in log_lines.iter().rev().take(lines_count).rev() {
-                        let (ts, lvl, msg) = parse_log_line(line);
-                        entries.push(serde_json::json!({
-                            "timestamp": ts,
-                            "level": lvl,
-                            "message": msg,
-                        }));
-                    }
-                    Json(serde_json::json!({"entries": entries, "count": entries.len()}))
+        _ => match read_file(&state.agent_log()) {
+            Ok(content) => {
+                let mut entries = Vec::new();
+                let log_lines: Vec<&str> = content.lines().collect();
+                for line in log_lines.iter().rev().take(lines_count).rev() {
+                    let (ts, lvl, msg) = parse_log_line(line);
+                    entries.push(serde_json::json!({
+                        "timestamp": ts,
+                        "level": lvl,
+                        "message": msg,
+                    }));
                 }
-                Err(e) => Json(serde_json::json!({"entries": [], "error": e})),
+                Json(serde_json::json!({"entries": entries, "count": entries.len()}))
             }
-        }
+            Err(e) => Json(serde_json::json!({"entries": [], "error": e})),
+        },
     }
 }
 
@@ -301,4 +328,3 @@ pub fn parse_log_line(line: &str) -> (String, String, String) {
         (ts, "INFO".into(), after_ts.to_string())
     }
 }
-

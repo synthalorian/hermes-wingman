@@ -10,7 +10,13 @@ pub async fn log_requests(req: Request, next: Next) -> Result<Response, StatusCo
 
     let duration = start.elapsed();
     let _status = response.status();
-    println!("[{}] {} {} — {:?}", chrono::Local::now().format("%Y-%m-%d %H:%M:%S"), method, uri, duration);
+    println!(
+        "[{}] {} {} — {:?}",
+        chrono::Local::now().format("%Y-%m-%d %H:%M:%S"),
+        method,
+        uri,
+        duration
+    );
 
     Ok(response)
 }

@@ -1,8 +1,8 @@
+use crate::helpers::{oauth_providers, read_config, read_file};
+use crate::platform::run_hermes;
+use crate::state::AppState;
 use axum::{extract::State, response::Json};
 use std::sync::Arc;
-use crate::state::AppState;
-use crate::platform::run_hermes;
-use crate::helpers::{read_config, read_file, oauth_providers};
 
 // Re-export detect_setup and install_hermes from gateway.rs so main.rs routes work
 pub use crate::handlers::gateway::{detect_setup, install_hermes};
@@ -52,10 +52,13 @@ pub async fn auto_configure(State(state): State<Arc<AppState>>) -> Json<serde_js
     // 2. Check for Ollama (localhost:11434)
     if check_port(11434) {
         if !providers.contains_key("ollama") {
-            providers.insert("ollama".into(), serde_json::json!({
-                "base_url": "http://127.0.0.1:11434/v1",
-                "api_key": "ollama-local"
-            }));
+            providers.insert(
+                "ollama".into(),
+                serde_json::json!({
+                    "base_url": "http://127.0.0.1:11434/v1",
+                    "api_key": "ollama-local"
+                }),
+            );
         }
         discovered.push(serde_json::json!({
             "name": "ollama",
@@ -68,25 +71,51 @@ pub async fn auto_configure(State(state): State<Arc<AppState>>) -> Json<serde_js
     // 3. Scan environment variables for API keys
     let env_key_map = vec![
         ("OPENAI_API_KEY", "openai", "https://api.openai.com/v1"),
-        ("ANTHROPIC_API_KEY", "anthropic", "https://api.anthropic.com/v1"),
-        ("GEMINI_API_KEY", "gemini", "https://generativelanguage.googleapis.com/v1beta"),
+        (
+            "ANTHROPIC_API_KEY",
+            "anthropic",
+            "https://api.anthropic.com/v1",
+        ),
+        (
+            "GEMINI_API_KEY",
+            "gemini",
+            "https://generativelanguage.googleapis.com/v1beta",
+        ),
         ("GROK_API_KEY", "xai", "https://api.x.ai/v1"),
         ("XAI_API_KEY", "xai", "https://api.x.ai/v1"),
         ("MISTRAL_API_KEY", "mistral", "https://api.mistral.ai/v1"),
-        ("DEEPSEEK_API_KEY", "nous", "https://api.nousresearch.com/v1"),
-        ("OPENROUTER_API_KEY", "openrouter", "https://openrouter.ai/api/v1"),
-        ("TOGETHER_API_KEY", "together", "https://api.together.xyz/v1"),
+        (
+            "DEEPSEEK_API_KEY",
+            "nous",
+            "https://api.nousresearch.com/v1",
+        ),
+        (
+            "OPENROUTER_API_KEY",
+            "openrouter",
+            "https://openrouter.ai/api/v1",
+        ),
+        (
+            "TOGETHER_API_KEY",
+            "together",
+            "https://api.together.xyz/v1",
+        ),
     ];
 
     let oauth = oauth_providers();
 
     for (env_var, provider_name, base_url) in &env_key_map {
         if let Ok(key) = std::env::var(env_var) {
-            if !key.is_empty() && !providers.contains_key(*provider_name) && !oauth.contains(*provider_name) {
-                providers.insert(provider_name.to_string(), serde_json::json!({
-                    "base_url": base_url,
-                    "api_key_env": env_var,
-                }));
+            if !key.is_empty()
+                && !providers.contains_key(*provider_name)
+                && !oauth.contains(*provider_name)
+            {
+                providers.insert(
+                    provider_name.to_string(),
+                    serde_json::json!({
+                        "base_url": base_url,
+                        "api_key_env": env_var,
+                    }),
+                );
                 discovered.push(serde_json::json!({
                     "name": *provider_name,
                     "type": "cloud",
@@ -121,19 +150,27 @@ pub async fn auto_configure(State(state): State<Arc<AppState>>) -> Json<serde_js
 
     // 5. Read existing config to preserve what's already there
     let existing_raw = read_file(&state.config_path()).unwrap_or_default();
-    let existing: serde_yaml::Value = serde_yaml::from_str(&existing_raw).unwrap_or(serde_yaml::Value::Null);
+    let existing: serde_yaml::Value =
+        serde_yaml::from_str(&existing_raw).unwrap_or(serde_yaml::Value::Null);
 
     // 6. Build the new config (merge: don't overwrite existing providers)
-    let existing_providers = existing["providers"].as_mapping().cloned().unwrap_or_default();
+    let existing_providers = existing["providers"]
+        .as_mapping()
+        .cloned()
+        .unwrap_or_default();
     for (k, v) in existing_providers {
         let name = k.as_str().unwrap_or("").to_string();
         if !providers.contains_key(&name) {
-            providers.insert(name, serde_json::to_value(v).unwrap_or(serde_json::Value::Null));
+            providers.insert(
+                name,
+                serde_json::to_value(v).unwrap_or(serde_json::Value::Null),
+            );
         }
     }
 
     // Preserve existing model if set
-    let existing_model = existing["model"].as_str()
+    let existing_model = existing["model"]
+        .as_str()
         .or_else(|| existing["model"]["default"].as_str())
         .unwrap_or("");
     if !existing_model.is_empty() {
@@ -142,17 +179,18 @@ pub async fn auto_configure(State(state): State<Arc<AppState>>) -> Json<serde_js
 
     // 7. Write the config — merge with existing to preserve other sections
     let mut config_value = existing.clone();
-    
+
     // Update model
     if let Some(mapping) = config_value.as_mapping_mut() {
         mapping.insert(
             serde_yaml::Value::String("model".into()),
             serde_yaml::Value::String(default_model.clone()),
         );
-        
+
         // Update fallback_providers
         if !fallback_providers.is_empty() {
-            let fb_list: Vec<serde_yaml::Value> = fallback_providers.iter()
+            let fb_list: Vec<serde_yaml::Value> = fallback_providers
+                .iter()
                 .map(|s| serde_yaml::Value::String(s.clone()))
                 .collect();
             mapping.insert(
@@ -160,7 +198,7 @@ pub async fn auto_configure(State(state): State<Arc<AppState>>) -> Json<serde_js
                 serde_yaml::Value::Sequence(fb_list),
             );
         }
-        
+
         // Merge providers (don't overwrite existing ones)
         let mut providers_map = serde_yaml::Mapping::new();
         for (name, cfg) in &providers {
@@ -188,7 +226,7 @@ pub async fn auto_configure(State(state): State<Arc<AppState>>) -> Json<serde_js
                 serde_yaml::Value::Mapping(prov),
             );
         }
-        
+
         // Merge with existing providers (existing takes precedence)
         if let Some(existing_provs) = mapping.get(&serde_yaml::Value::String("providers".into())) {
             if let Some(existing_map) = existing_provs.as_mapping() {
@@ -197,17 +235,17 @@ pub async fn auto_configure(State(state): State<Arc<AppState>>) -> Json<serde_js
                 }
             }
         }
-        
+
         mapping.insert(
             serde_yaml::Value::String("providers".into()),
             serde_yaml::Value::Mapping(providers_map),
         );
     }
-    
+
     // Serialize to YAML string
     let config_yaml = serde_yaml::to_string(&config_value)
         .unwrap_or_else(|_| format!("model: {}", default_model));
-    
+
     let _ = std::fs::write(&state.config_path(), &config_yaml);
 
     Json(serde_json::json!({
@@ -226,7 +264,8 @@ pub fn check_port(port: u16) -> bool {
     TcpStream::connect_timeout(
         &format!("127.0.0.1:{}", port).parse().unwrap(),
         std::time::Duration::from_millis(500),
-    ).is_ok()
+    )
+    .is_ok()
 }
 
 /// Strip <think>...</think> reasoning tags from model output.
@@ -235,29 +274,46 @@ pub fn strip_think_tags_stream(s: &str, in_think: &mut bool) -> String {
     let chars: Vec<char> = s.chars().collect();
     let mut i = 0;
     while i < chars.len() {
-        if !*in_think && i + 6 < chars.len()
-            && chars[i] == '<' && chars[i+1] == 't' && chars[i+2] == 'h'
-            && chars[i+3] == 'i' && chars[i+4] == 'n' && chars[i+5] == 'k'
-            && chars[i+6] == '>'
+        if !*in_think
+            && i + 6 < chars.len()
+            && chars[i] == '<'
+            && chars[i + 1] == 't'
+            && chars[i + 2] == 'h'
+            && chars[i + 3] == 'i'
+            && chars[i + 4] == 'n'
+            && chars[i + 5] == 'k'
+            && chars[i + 6] == '>'
         {
             *in_think = true;
             i += 7;
             continue;
         }
-        if *in_think && i + 7 < chars.len()
-            && chars[i] == '<' && chars[i+1] == '/' && chars[i+2] == 't'
-            && chars[i+3] == 'h' && chars[i+4] == 'i' && chars[i+5] == 'n'
-            && chars[i+6] == 'k' && chars[i+7] == '>'
+        if *in_think
+            && i + 7 < chars.len()
+            && chars[i] == '<'
+            && chars[i + 1] == '/'
+            && chars[i + 2] == 't'
+            && chars[i + 3] == 'h'
+            && chars[i + 4] == 'i'
+            && chars[i + 5] == 'n'
+            && chars[i + 6] == 'k'
+            && chars[i + 7] == '>'
         {
             *in_think = false;
             i += 8;
             continue;
         }
         // Also strip orphan </think> tags (no matching opening tag)
-        if !*in_think && i + 7 < chars.len()
-            && chars[i] == '<' && chars[i+1] == '/' && chars[i+2] == 't'
-            && chars[i+3] == 'h' && chars[i+4] == 'i' && chars[i+5] == 'n'
-            && chars[i+6] == 'k' && chars[i+7] == '>'
+        if !*in_think
+            && i + 7 < chars.len()
+            && chars[i] == '<'
+            && chars[i + 1] == '/'
+            && chars[i + 2] == 't'
+            && chars[i + 3] == 'h'
+            && chars[i + 4] == 'i'
+            && chars[i + 5] == 'n'
+            && chars[i + 6] == 'k'
+            && chars[i + 7] == '>'
         {
             i += 8;
             continue;
@@ -296,17 +352,25 @@ pub async fn probe_provider_handler(
             let full_name = format!("deepseek/{}", test_model);
             match run_hermes(&["--model", &full_name, "--oneshot", "hi"]) {
                 Ok((stdout, _, code)) if code == 0 && !stdout.trim().is_empty() => {
-                    return Json(serde_json::json!({"success": true, "provider": provider_name, "model": test_model}));
+                    return Json(
+                        serde_json::json!({"success": true, "provider": provider_name, "model": test_model}),
+                    );
                 }
                 Ok((_, stderr, _)) => {
-                    return Json(serde_json::json!({"success": false, "error": stderr.trim(), "provider": provider_name}));
+                    return Json(
+                        serde_json::json!({"success": false, "error": stderr.trim(), "provider": provider_name}),
+                    );
                 }
                 Err(e) => {
-                    return Json(serde_json::json!({"success": false, "error": e, "provider": provider_name}));
+                    return Json(
+                        serde_json::json!({"success": false, "error": e, "provider": provider_name}),
+                    );
                 }
             }
         }
-        return Json(serde_json::json!({"success": false, "error": "no base_url for provider", "provider": provider_name}));
+        return Json(
+            serde_json::json!({"success": false, "error": "no base_url for provider", "provider": provider_name}),
+        );
     }
 
     let test_model = if model.is_empty() {
@@ -326,7 +390,9 @@ pub async fn probe_provider_handler(
     };
 
     if test_model.is_empty() {
-        return Json(serde_json::json!({"success": false, "error": "model required for this provider", "provider": provider_name}));
+        return Json(
+            serde_json::json!({"success": false, "error": "model required for this provider", "provider": provider_name}),
+        );
     }
 
     let chat_url = format!("{}/chat/completions", base_url.trim_end_matches('/'));
@@ -338,21 +404,33 @@ pub async fn probe_provider_handler(
     });
 
     let payload_str = serde_json::to_string(&payload).unwrap_or_default();
-    let api_key = provider_cfg["api_key"].as_str()
+    let api_key = provider_cfg["api_key"]
+        .as_str()
         .or_else(|| {
-            provider_cfg["api_key_env"].as_str()
+            provider_cfg["api_key_env"]
+                .as_str()
                 .and_then(|env| std::env::var(env).ok())
                 .map(|s| Box::leak(s.into_boxed_str()) as &str)
         })
         .unwrap_or("");
 
     let mut curl = std::process::Command::new("curl");
-    curl.args(["-s", "--max-time", "15", "-X", "POST", &chat_url,
-               "-H", "Content-Type: application/json",
-               "-d", &payload_str]);
+    curl.args([
+        "-s",
+        "--max-time",
+        "15",
+        "-X",
+        "POST",
+        &chat_url,
+        "-H",
+        "Content-Type: application/json",
+        "-d",
+        &payload_str,
+    ]);
 
     if !api_key.is_empty() && api_key != "ollama-local" && api_key != "llama-swap-local" {
-        curl.arg("-H").arg(format!("Authorization: Bearer {}", api_key));
+        curl.arg("-H")
+            .arg(format!("Authorization: Bearer {}", api_key));
     }
 
     match curl.output() {
@@ -360,32 +438,50 @@ pub async fn probe_provider_handler(
             if output.status.success() {
                 let body = String::from_utf8_lossy(&output.stdout);
                 if let Ok(json) = serde_json::from_str::<serde_json::Value>(&body) {
-                    let has_content = json["choices"].as_array()
+                    let has_content = json["choices"]
+                        .as_array()
                         .and_then(|c| c.first())
                         .and_then(|c| c["message"]["content"].as_str())
                         .map(|s| !s.is_empty())
                         .unwrap_or(false);
                     if has_content {
-                        return Json(serde_json::json!({"success": true, "provider": provider_name, "model": test_model}));
+                        return Json(
+                            serde_json::json!({"success": true, "provider": provider_name, "model": test_model}),
+                        );
                     }
                 }
                 // Response but no content — might be auth error
                 let snippet = body.chars().take(200).collect::<String>();
-                if snippet.contains("401") || snippet.contains("unauthorized") || snippet.contains("Unauthorized") || snippet.contains("auth") {
-                    return Json(serde_json::json!({"success": false, "error": "Authentication failed — check your API key", "provider": provider_name}));
+                if snippet.contains("401")
+                    || snippet.contains("unauthorized")
+                    || snippet.contains("Unauthorized")
+                    || snippet.contains("auth")
+                {
+                    return Json(
+                        serde_json::json!({"success": false, "error": "Authentication failed — check your API key", "provider": provider_name}),
+                    );
                 }
                 if snippet.contains("429") || snippet.contains("rate") {
-                    return Json(serde_json::json!({"success": false, "error": "Rate limited — try again later", "provider": provider_name}));
+                    return Json(
+                        serde_json::json!({"success": false, "error": "Rate limited — try again later", "provider": provider_name}),
+                    );
                 }
-                return Json(serde_json::json!({"success": true, "provider": provider_name, "model": test_model, "note": "responded but no content"}));
+                return Json(
+                    serde_json::json!({"success": true, "provider": provider_name, "model": test_model, "note": "responded but no content"}),
+                );
             }
             let stderr = String::from_utf8_lossy(&output.stderr);
             let stdout = String::from_utf8_lossy(&output.stdout);
-            let msg = if !stdout.is_empty() { &*stdout } else { &*stderr };
+            let msg = if !stdout.is_empty() {
+                &*stdout
+            } else {
+                &*stderr
+            };
             let snippet = msg.chars().take(200).collect::<String>();
             Json(serde_json::json!({"success": false, "error": snippet, "provider": provider_name}))
         }
-        Err(e) => Json(serde_json::json!({"success": false, "error": e.to_string(), "provider": provider_name})),
+        Err(e) => Json(
+            serde_json::json!({"success": false, "error": e.to_string(), "provider": provider_name}),
+        ),
     }
 }
-

@@ -12,7 +12,8 @@ pub fn hermes_home_dir() -> PathBuf {
         let local = std::env::var("LOCALAPPDATA")
             .or_else(|_| std::env::var("APPDATA"))
             .unwrap_or_else(|_| {
-                let profile = std::env::var("USERPROFILE").unwrap_or_else(|_| "C:\\Users\\Default".into());
+                let profile =
+                    std::env::var("USERPROFILE").unwrap_or_else(|_| "C:\\Users\\Default".into());
                 format!("{}\\AppData\\Local", profile)
             });
         PathBuf::from(format!("{}\\hermes", local))
@@ -38,7 +39,8 @@ pub fn find_hermes_binary() -> Option<String> {
         .ok()
         .and_then(|o| {
             if o.status.success() {
-                String::from_utf8(o.stdout).ok()
+                String::from_utf8(o.stdout)
+                    .ok()
                     .map(|s| s.lines().next().unwrap_or("").trim().to_string())
             } else {
                 None
@@ -51,14 +53,18 @@ pub fn find_hermes_binary() -> Option<String> {
     // Fallback: common platform-specific paths
     #[cfg(target_os = "windows")]
     {
-        let local = std::env::var("LOCALAPPDATA").unwrap_or_else(|_| "C:\\Users\\Default\\AppData\\Local".into());
+        let local = std::env::var("LOCALAPPDATA")
+            .unwrap_or_else(|_| "C:\\Users\\Default\\AppData\\Local".into());
         let paths = vec![
             format!("{}\\hermes\\hermes.exe", local),
             format!("{}\\hermes\\Scripts\\hermes.exe", local),
             format!("{}\\Python\\Scripts\\hermes.exe", local),
             "C:\\Program Files\\hermes\\hermes.exe".into(),
         ];
-        paths.iter().find(|p| std::path::Path::new(p).exists()).cloned()
+        paths
+            .iter()
+            .find(|p| std::path::Path::new(p).exists())
+            .cloned()
     }
     #[cfg(not(target_os = "windows"))]
     {
@@ -68,9 +74,15 @@ pub fn find_hermes_binary() -> Option<String> {
             "/usr/bin/hermes".into(),
             "/usr/local/bin/hermes".into(),
             "/opt/homebrew/bin/hermes".into(),
-            format!("/Users/{}/.local/bin/hermes", home.split('/').last().unwrap_or("")),
+            format!(
+                "/Users/{}/.local/bin/hermes",
+                home.split('/').last().unwrap_or("")
+            ),
         ];
-        paths.iter().find(|p| std::path::Path::new(p).exists()).cloned()
+        paths
+            .iter()
+            .find(|p| std::path::Path::new(p).exists())
+            .cloned()
     }
 }
 
@@ -93,4 +105,3 @@ pub fn run_hermes(args: &[&str]) -> Result<(String, String, i32), String> {
     let stderr = String::from_utf8_lossy(&output.stderr).to_string();
     Ok((stdout, stderr, output.status.code().unwrap_or(-1)))
 }
-

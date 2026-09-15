@@ -1,14 +1,14 @@
-use std::collections::HashSet;
-use serde::Serialize;
-use crate::helpers::{read_config, oauth_providers, universal_cloud_catalog};
+use crate::helpers::{oauth_providers, read_config, universal_cloud_catalog};
 use crate::platform::run_hermes;
+use serde::Serialize;
+use std::collections::HashSet;
 
 // ── Models ─────────────────────────────────────────────────────────────────
 
 #[derive(Serialize)]
 pub struct ModelEntry {
     pub name: String,
-    pub source: String,  // "local", "fallback", "cloud"
+    pub source: String, // "local", "fallback", "cloud"
     pub provider_name: String,
 }
 
@@ -25,7 +25,8 @@ pub async fn discover_models() -> ModelsResponse {
     let config = read_config();
 
     // model in config can be either "model: string" or "model: {default: string}"
-    let current = config["model"].as_str()
+    let current = config["model"]
+        .as_str()
         .map(|s| s.to_string())
         .or_else(|| config["model"]["default"].as_str().map(|s| s.to_string()))
         .unwrap_or_default();
@@ -36,7 +37,10 @@ pub async fn discover_models() -> ModelsResponse {
         .to_string();
 
     // Parse providers from config
-    let providers_map = config["providers"].as_mapping().cloned().unwrap_or_default();
+    let providers_map = config["providers"]
+        .as_mapping()
+        .cloned()
+        .unwrap_or_default();
 
     // Local models from llama-swap
     let mut local: Vec<ModelEntry> = Vec::new();
@@ -84,7 +88,8 @@ pub async fn discover_models() -> ModelsResponse {
     let mut cloud: Vec<ModelEntry> = Vec::new();
 
     // Build set of configured provider types for tagging
-    let configured_providers: HashSet<String> = providers_map.keys()
+    let configured_providers: HashSet<String> = providers_map
+        .keys()
         .filter_map(|k| k.as_str().map(|s| s.to_string()))
         .collect();
 
@@ -95,19 +100,24 @@ pub async fn discover_models() -> ModelsResponse {
             // Determine source: "configured" if the user has a provider for this, "available" otherwise
             let is_configured = configured_providers.iter().any(|p| {
                 p == prefix
-                || (prefix == &"google" && (p == "gemini" || p == "gemini-oauth"))
-                || (prefix == &"x-ai" && (p.contains("xai") || p.contains("grok")))
-                || (prefix == &"deepseek" && (p == "nous" || p == "deepseek"))
-                || (prefix == &"anthropic" && (p == "claude" || p.starts_with("anthropic")))
-                || (prefix == &"openai" && p.starts_with("openai"))
-                || (prefix == &"meta-llama" && (p.starts_with("meta-llama") || p.starts_with("llama")))
-                || (prefix == &"mistral" && p.starts_with("mistral"))
-                || (prefix == &"qwen" && p.starts_with("qwen"))
+                    || (prefix == &"google" && (p == "gemini" || p == "gemini-oauth"))
+                    || (prefix == &"x-ai" && (p.contains("xai") || p.contains("grok")))
+                    || (prefix == &"deepseek" && (p == "nous" || p == "deepseek"))
+                    || (prefix == &"anthropic" && (p == "claude" || p.starts_with("anthropic")))
+                    || (prefix == &"openai" && p.starts_with("openai"))
+                    || (prefix == &"meta-llama"
+                        && (p.starts_with("meta-llama") || p.starts_with("llama")))
+                    || (prefix == &"mistral" && p.starts_with("mistral"))
+                    || (prefix == &"qwen" && p.starts_with("qwen"))
             });
 
             cloud.push(ModelEntry {
                 name: full_name,
-                source: if is_configured { "configured".into() } else { "available".into() },
+                source: if is_configured {
+                    "configured".into()
+                } else {
+                    "available".into()
+                },
                 provider_name: prefix.to_string(),
             });
         }
@@ -149,7 +159,13 @@ pub async fn discover_models() -> ModelsResponse {
         }
     }
 
-    ModelsResponse { local, cloud, fallback, current, provider: current_provider }
+    ModelsResponse {
+        local,
+        cloud,
+        fallback,
+        current,
+        provider: current_provider,
+    }
 }
 
 pub fn probe_model_via_curl(model_name: &str, config: &serde_yaml::Value) -> (String, String) {
@@ -210,7 +226,12 @@ pub fn probe_model_via_curl(model_name: &str, config: &serde_yaml::Value) -> (St
     probe_via_provider(config, config_provider, model_short, model_name)
 }
 
-pub fn probe_via_provider(config: &serde_yaml::Value, provider_name: &str, model: &str, full_name: &str) -> (String, String) {
+pub fn probe_via_provider(
+    config: &serde_yaml::Value,
+    provider_name: &str,
+    model: &str,
+    full_name: &str,
+) -> (String, String) {
     let base_url = config["providers"][provider_name]["base_url"]
         .as_str()
         .unwrap_or("")
@@ -244,9 +265,18 @@ pub fn probe_via_provider(config: &serde_yaml::Value, provider_name: &str, model
     let payload_str = serde_json::to_string(&payload).unwrap_or_default();
 
     let mut curl = std::process::Command::new("curl");
-    curl.args(["-s", "--max-time", "30", "-X", "POST", &chat_url,
-               "-H", "Content-Type: application/json",
-               "-d", &payload_str]);
+    curl.args([
+        "-s",
+        "--max-time",
+        "30",
+        "-X",
+        "POST",
+        &chat_url,
+        "-H",
+        "Content-Type: application/json",
+        "-d",
+        &payload_str,
+    ]);
 
     if let Some(key) = &api_key {
         if !key.is_empty() && key != "ollama-local" && key != "llama-swap-local" {
@@ -262,7 +292,12 @@ pub fn probe_via_provider(config: &serde_yaml::Value, provider_name: &str, model
                 let body = String::from_utf8_lossy(&output.stdout).to_string();
                 let err_msg = if !body.is_empty() {
                     // Truncate to first meaningful line
-                    body.lines().next().unwrap_or(&body).chars().take(150).collect::<String>()
+                    body.lines()
+                        .next()
+                        .unwrap_or(&body)
+                        .chars()
+                        .take(150)
+                        .collect::<String>()
                 } else {
                     format!("HTTP {}", output.status)
                 };
@@ -283,7 +318,11 @@ pub fn probe_via_provider(config: &serde_yaml::Value, provider_name: &str, model
                     if !content.is_empty() || !reasoning.is_empty() {
                         ("ok".into(), "".into())
                     } else {
-                        ("error".into(), "empty response (model may need more tokens or is still loading)".into())
+                        (
+                            "error".into(),
+                            "empty response (model may need more tokens or is still loading)"
+                                .into(),
+                        )
                     }
                 }
                 Err(_) => {
@@ -296,4 +335,3 @@ pub fn probe_via_provider(config: &serde_yaml::Value, provider_name: &str, model
         Err(e) => ("error".into(), e.to_string()),
     }
 }
-

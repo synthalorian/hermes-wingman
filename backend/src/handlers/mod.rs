@@ -11,6 +11,6 @@ pub mod memory;
 pub mod metrics;
 pub mod models;
 pub mod providers;
-pub mod setup;
 pub mod sessions;
+pub mod setup;
 pub mod skills;

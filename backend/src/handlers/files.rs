@@ -1,8 +1,11 @@
-use axum::{extract::{Query, State}, response::Json};
-use std::sync::Arc;
-use std::path::PathBuf;
-use serde::{Deserialize};
 use crate::state::AppState;
+use axum::{
+    extract::{Query, State},
+    response::Json,
+};
+use serde::Deserialize;
+use std::path::PathBuf;
+use std::sync::Arc;
 
 // ── File Operations ─────────────────────────────────────────────────────────
 
@@ -43,7 +46,9 @@ pub async fn files_list(
             for entry in entries {
                 if let Ok(entry) = entry {
                     let name = entry.file_name().to_string_lossy().to_string();
-                    if name.starts_with('.') { continue; }
+                    if name.starts_with('.') {
+                        continue;
+                    }
                     if entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
                         dirs.push(name);
                     } else {
@@ -154,7 +159,8 @@ pub async fn files_info(
     let perms = metadata.permissions().mode();
     let is_dir = metadata.is_dir();
     let size = metadata.len();
-    let modified = metadata.modified()
+    let modified = metadata
+        .modified()
         .ok()
         .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
         .map(|d| d.as_secs())
@@ -207,7 +213,9 @@ pub async fn files_rename(
     let parent = full_path.parent().unwrap_or(std::path::Path::new("/"));
     let new_path = parent.join(&body.new_name);
     match std::fs::rename(&full_path, &new_path) {
-        Ok(()) => Json(serde_json::json!({"success": true, "from": body.path, "to": body.new_name})),
+        Ok(()) => {
+            Json(serde_json::json!({"success": true, "from": body.path, "to": body.new_name}))
+        }
         Err(e) => Json(serde_json::json!({"success": false, "error": e.to_string()})),
     }
 }
@@ -225,8 +233,9 @@ pub async fn files_mkdir(
     let base_path = resolve_fs_path(&state, &body.path);
     let dir_path = base_path.join(&body.name);
     match std::fs::create_dir(&dir_path) {
-        Ok(()) => Json(serde_json::json!({"success": true, "path": format!("{}/{}", body.path, body.name)})),
+        Ok(()) => Json(
+            serde_json::json!({"success": true, "path": format!("{}/{}", body.path, body.name)}),
+        ),
         Err(e) => Json(serde_json::json!({"success": false, "error": e.to_string()})),
     }
 }
-

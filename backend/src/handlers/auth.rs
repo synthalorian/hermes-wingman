@@ -1,8 +1,11 @@
-use axum::{extract::{Path, State}, response::Json};
-use std::sync::Arc;
-use crate::state::AppState;
-use crate::platform::hermes_binary_path;
 use crate::helpers::read_file;
+use crate::platform::hermes_binary_path;
+use crate::state::AppState;
+use axum::{
+    extract::{Path, State},
+    response::Json,
+};
+use std::sync::Arc;
 
 // ── Auth / Provider Login ───────────────────────────────────────────────────
 
@@ -19,7 +22,11 @@ pub async fn auth_start_oauth(
     let already_logged_in = read_file(&auth_path)
         .ok()
         .and_then(|c| serde_json::from_str::<serde_json::Value>(&c).ok())
-        .and_then(|j| j["providers"].as_object().map(|p| p.contains_key(&provider)))
+        .and_then(|j| {
+            j["providers"]
+                .as_object()
+                .map(|p| p.contains_key(&provider))
+        })
         .unwrap_or(false);
 
     if already_logged_in {
@@ -59,10 +66,7 @@ pub async fn auth_start_oauth(
                     let combined = format!("{}\n{}", stdout, stderr);
 
                     // Try to find an auth URL in the output
-                    let url_patterns = [
-                        "https://",
-                        "http://localhost",
-                    ];
+                    let url_patterns = ["https://", "http://localhost"];
                     let mut auth_url: Option<String> = None;
                     for line in combined.lines() {
                         let trimmed = line.trim();
@@ -76,7 +80,11 @@ pub async fn auth_start_oauth(
                     let now_logged_in = read_file(&auth_path)
                         .ok()
                         .and_then(|c| serde_json::from_str::<serde_json::Value>(&c).ok())
-                        .and_then(|j| j["providers"].as_object().map(|p| p.contains_key(&provider)))
+                        .and_then(|j| {
+                            j["providers"]
+                                .as_object()
+                                .map(|p| p.contains_key(&provider))
+                        })
                         .unwrap_or(false);
 
                     if now_logged_in {
@@ -122,9 +130,7 @@ pub async fn auth_start_oauth(
 }
 
 /// Login with an API key provider.
-pub async fn auth_add_api_key(
-    Json(body): Json<serde_json::Value>,
-) -> Json<serde_json::Value> {
+pub async fn auth_add_api_key(Json(body): Json<serde_json::Value>) -> Json<serde_json::Value> {
     let provider = body["provider"].as_str().unwrap_or("").to_string();
     let api_key = body["api_key"].as_str().unwrap_or("").to_string();
 
@@ -137,7 +143,15 @@ pub async fn auth_add_api_key(
 
     let binary = hermes_binary_path();
     match tokio::process::Command::new(&binary)
-        .args(["auth", "add", "--type", "api-key", "--api-key", &api_key, &provider])
+        .args([
+            "auth",
+            "add",
+            "--type",
+            "api-key",
+            "--api-key",
+            &api_key,
+            &provider,
+        ])
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
         .env("PAGER", "cat")
@@ -170,24 +184,36 @@ pub async fn auth_get_status(State(state): State<Arc<AppState>>) -> Json<serde_j
     let logged_in = read_file(&auth_path)
         .ok()
         .and_then(|c| serde_json::from_str::<serde_json::Value>(&c).ok())
-        .and_then(|j| j["providers"].as_object().map(|p| {
-            p.iter().map(|(k, v)| {
-                let cred_type = v["type"].as_str().unwrap_or("unknown");
-                (k.clone(), cred_type.to_string())
-            }).collect::<Vec<_>>()
-        }))
+        .and_then(|j| {
+            j["providers"].as_object().map(|p| {
+                p.iter()
+                    .map(|(k, v)| {
+                        let cred_type = v["type"].as_str().unwrap_or("unknown");
+                        (k.clone(), cred_type.to_string())
+                    })
+                    .collect::<Vec<_>>()
+            })
+        })
         .unwrap_or_default();
 
     // Check each known provider via status command
     let known_providers = vec![
-        "nous", "anthropic", "xai", "xai-oauth", "gemini",
-        "openai-codex", "openrouter", "deepseek", "zai",
+        "nous",
+        "anthropic",
+        "xai",
+        "xai-oauth",
+        "gemini",
+        "openai-codex",
+        "openrouter",
+        "deepseek",
+        "zai",
     ];
 
     let mut providers = Vec::new();
     for p in &known_providers {
         let is_logged_in = logged_in.iter().any(|(name, _)| name == p);
-        let cred_type = logged_in.iter()
+        let cred_type = logged_in
+            .iter()
             .find(|(name, _)| name == p)
             .map(|(_, t)| t.as_str())
             .unwrap_or("none");
@@ -234,4 +260,3 @@ pub async fn auth_logout(
         })),
     }
 }
-
