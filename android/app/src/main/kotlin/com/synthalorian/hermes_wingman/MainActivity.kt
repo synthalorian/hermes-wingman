@@ -1,4 +1,4 @@
-package com.example.hermes_wingman
+package com.synthalorian.hermes_wingman
 
 import io.flutter.embedding.android.FlutterActivity
 
