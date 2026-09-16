@@ -82,6 +82,6 @@ The same 29 themes from the Flutter app are available in the web dashboard. Them
 
 ---
 
-Made by **synth** with **Blackclaw** ⚫🦞.
+Made by **synth** with **blackclaw** ⚫🦞.
 
 *This is the wave. ⚫🦞🌆*
