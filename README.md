@@ -15,7 +15,7 @@
   <img src="https://img.shields.io/badge/frontend-Flutter-02569B" alt="Flutter">
   <img src="https://img.shields.io/badge/web-Rails%208-CC0000" alt="Rails">
   <img src="https://img.shields.io/badge/backend-Rust-orange" alt="Rust">
-  <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
+  <img src="https://img.shields.io/badge/license-Apache--2.0-blue" alt="License">
   <img src="https://img.shields.io/badge/version-1.0.0-red" alt="Version">
   <img src="https://img.shields.io/badge/status-active-brightgreen" alt="Status">
   <img src="https://img.shields.io/badge/contributing-guide-blue" alt="Contributing">
@@ -361,7 +361,7 @@ If Hermes Wingman helps you work faster, smoother, or cooler — consider buying
 
 ## 📄 License
 
-MIT License — see [LICENSE](LICENSE) for details.
+Apache License 2.0 — see [LICENSE](LICENSE) for details.
 
 Made by [synth](https://github.com/synthalorian) with [blackclaw](https://github.com/synthalorian) — a digital entity from the neon grid of 1984.
 
