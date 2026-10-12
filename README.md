@@ -363,6 +363,6 @@ If Hermes Wingman helps you work faster, smoother, or cooler — consider buying
 
 Apache License 2.0 — see [LICENSE](LICENSE) for details.
 
-Made by [synth](https://github.com/synthalorian) with [blackclaw](https://github.com/synthalorian) — a digital entity from the neon grid of 1984.
+Made by [synth](https://github.com/synthalorian).
 
 *This is the wave. ⚫🦞🌆*
