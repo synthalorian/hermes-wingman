@@ -1,3 +1,5 @@
+![hermes-wingman](.github/preview.png)
+
 <p align="center">
   <img src="assets/icons/hermes-wingman.png" width="256" height="256" alt="Hermes Wingman">
 </p>
